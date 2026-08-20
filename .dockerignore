@@ -1,0 +1,14 @@
+.git
+**/.git
+**/.DS_Store
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/node_modules
+**/.npm-cache
+**/dist
+**/.npm-cache
+app/data
+app/app.log
+agent/configs.toml
+deploy-data

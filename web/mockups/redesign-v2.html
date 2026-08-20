@@ -1,0 +1,782 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>QCal 校准监控面板 · 布局 v3 预览</title>
+<style>
+:root {
+  --bg: #f5f6fa;
+  --card: #ffffff;
+  --ink: #171c2e;
+  --ink-2: #5a6072;
+  --ink-3: #9aa1b2;
+  --line: #eef0f6;
+  --line-2: #e3e6f0;
+  --accent: #4f6ef7;
+  --accent-2: #8b5cf6;
+  --grad: linear-gradient(135deg, #4f6ef7, #8b5cf6);
+  --ok: #16a34a;
+  --err: #e11d48;
+  --warn: #d97706;
+  --shadow: 0 1px 2px rgba(23, 28, 46, .04), 0 6px 16px rgba(23, 28, 46, .05);
+  --radius: 14px;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.app { min-height: 100vh; display: flex; flex-direction: column; }
+
+/* ── 顶栏 ── */
+.topbar {
+  display: flex; align-items: center; gap: 18px;
+  padding: 14px 32px;
+  background: rgba(255, 255, 255, .92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 1px 0 rgba(23, 28, 46, .02);
+  position: sticky; top: 0; z-index: 20;
+}
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-mark {
+  width: 34px; height: 34px; border-radius: 10px;
+  background: var(--grad); display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 16px; font-weight: 700;
+  box-shadow: 0 4px 10px rgba(79, 110, 247, .35);
+}
+.brand h1 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
+.subtitle { display: block; margin-top: 3px; color: var(--ink-3); font-size: 12px; }
+
+.status-pill {
+  margin-left: auto;
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 7px 14px; background: #fff; border: 1px solid var(--line-2);
+  border-radius: 999px; color: var(--ink-2); font-size: 13px; box-shadow: var(--shadow);
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); flex-shrink: 0; display: inline-block; }
+.dot.ok { background: var(--ok); box-shadow: 0 0 0 3px rgba(22, 163, 74, .15); }
+.dot.err { background: var(--err); box-shadow: 0 0 0 3px rgba(225, 29, 72, .12); }
+.dot.warn { background: var(--warn); box-shadow: 0 0 0 3px rgba(217, 119, 6, .15); }
+
+.refresh-pill {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 7px 14px; background: #fff; border: 1px solid var(--line-2);
+  border-radius: 999px; color: var(--ink-3); font-size: 12px; box-shadow: var(--shadow);
+}
+.refresh-pill .spin {
+  width: 12px; height: 12px; border-radius: 50%;
+  border: 2px solid var(--line-2); border-top-color: var(--accent);
+  animation: spin 1.2s linear infinite; flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.refresh-pill b { color: var(--ink-2); font-weight: 600; }
+
+.agents-pop { position: relative; }
+.agents-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 15px; border: 1px solid var(--line-2); border-radius: 10px;
+  background: #fff; color: var(--ink-2); cursor: pointer; font-size: 13px; font-weight: 600;
+  box-shadow: var(--shadow); transition: all .15s; font: inherit;
+}
+.agents-btn:hover { border-color: var(--accent); color: var(--accent); }
+.agents-count {
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
+  background: #e8f7ef; color: #15803d; font-size: 11px; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.agents-menu {
+  position: absolute; right: 0; top: calc(100% + 8px); width: 260px;
+  background: #fff; border: 1px solid var(--line-2); border-radius: 12px;
+  box-shadow: var(--shadow); padding: 8px; opacity: 0; visibility: hidden;
+  transform: translateY(-4px); transition: all .15s; z-index: 30;
+}
+.agents-pop:hover .agents-menu { opacity: 1; visibility: visible; transform: none; }
+.agent-row { padding: 10px 10px; border-radius: 8px; }
+.agent-row:hover { background: #f8f9fd; }
+.agent-row + .agent-row { border-top: 1px solid var(--line); }
+.agent-row .name { font-weight: 600; font-size: 13px; }
+.agent-row .meta { margin-top: 3px; color: var(--ink-3); font-size: 11.5px; word-break: break-all; }
+
+/* ── 主区 ── */
+main {
+  flex: 1; max-width: 1560px; width: 100%; margin: 0 auto;
+  padding: 24px 32px 48px; display: grid; gap: 24px; align-items: start;
+}
+.grid {
+  display: grid; grid-template-columns: 300px minmax(0, 1fr) 300px; gap: 24px; align-items: start;
+}
+.col { min-width: 0; display: grid; gap: 24px; }
+.col-left, .col-right { position: sticky; top: 78px; }
+.col-main { display: grid; gap: 24px; }
+
+/* ── 卡片 / 标题 ── */
+.card {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px;
+}
+.card.list-card { padding: 16px; }
+.sec-title {
+  margin: 0; font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .07em; color: var(--ink-2);
+  display: flex; align-items: center; gap: 8px;
+}
+.sec-title::before {
+  content: ''; display: inline-block; width: 4px; height: 12px; border-radius: 2px;
+  background: var(--grad); flex-shrink: 0;
+}
+.sec-title.mb { margin-bottom: 16px; }
+.hint { color: var(--ink-3); font-size: 12px; }
+.empty { color: var(--ink-3); font-size: 13px; padding: 8px 0; }
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11.5px; background: #f1f2f7; padding: 2px 6px; border-radius: 5px; color: var(--ink-2);
+}
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+/* 左栏内层级标题 */
+.sub-head {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 700; color: var(--ink-2);
+  margin: 18px 0 8px;
+}
+.sub-head:first-of-type { margin-top: 14px; }
+.sub-head::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+.sub-head code { font-weight: 500; color: var(--ink-3); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sub-head.hist { color: var(--ink-3); border-top: 1px dashed var(--line-2); padding-top: 16px; margin-top: 18px; }
+.sub-head.hist::before { background: var(--ink-3); }
+
+/* 当前校准：Action 列表（每条标注 1-7 大步骤，可折叠） */
+.group-title { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--ink-2); }
+.group-title .t-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.group-title.current .t-dot { background: var(--accent); }
+.group-title.hist { color: var(--ink-3); border-top: 1px dashed var(--line-2); padding-top: 14px; margin-top: 10px; }
+.group-title.hist .t-dot { background: var(--ink-3); }
+.cal-id {
+  display: block; margin-top: 6px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11.5px; background: #f1f2f7; padding: 4px 8px; border-radius: 6px; color: var(--ink-2); font-weight: 500; word-break: break-all;
+}
+.action-list { display: grid; gap: 6px; }
+.action-item {
+  display: grid; gap: 5px;
+  padding: 10px 12px; border: 1px solid transparent; border-radius: 11px;
+  cursor: pointer; transition: all .15s; width: 100%;
+}
+.action-item:hover { background: #fff; border-color: var(--line-2); box-shadow: var(--shadow); }
+.action-item.active { background: #f5f7ff; border-color: #cdd7fd; box-shadow: 0 0 0 3px rgba(79, 110, 247, .08); }
+.action-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.action-name { font-weight: 600; font-size: 13px; }
+.action-item.active .action-name { color: var(--accent); }
+.action-step { font-size: 11px; color: var(--accent); background: #eef1ff; border-radius: 5px; padding: 1px 6px; font-weight: 600; }
+.action-meta { display: flex; align-items: center; gap: 6px; color: var(--ink-3); font-size: 11.5px; }
+.step-group { margin-bottom: 2px; }
+.step-group-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; margin: 12px 0 5px;
+  background: #fafbfe; border: 1px solid var(--line); border-radius: 9px;
+}
+.step-group-head .step-badge {
+  width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11.5px; font-weight: 700; color: #fff; background: var(--accent);
+}
+.step-group-head .step-badge.done { background: var(--ok); }
+.step-group-head .step-badge.running { background: var(--accent); }
+.step-group-head .step-badge.pending { background: var(--ink-3); }
+.step-group-head .step-group-label { font-weight: 600; font-size: 12.5px; color: var(--ink-2); }
+.step-group-head .step-group-desc { margin-left: auto; font-size: 11px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.step-group-body { display: grid; gap: 5px; padding-left: 6px; }
+.step-empty { padding: 8px 12px; color: var(--ink-3); font-size: 12px; border: 1px dashed var(--line-2); border-radius: 9px; }
+
+/* ── 状态徽章 ── */
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600;
+  white-space: nowrap; background: #f1f2f7; color: var(--ink-2); margin-left: auto;
+}
+.chip .dot { width: 6px; height: 6px; box-shadow: none; }
+.chip.ok { background: #e8f7ef; color: #15803d; }
+.chip.err { background: #fdecef; color: #be123c; }
+.chip.warn { background: #fdf1e3; color: #b45309; }
+.chip.warn .dot { animation: pulse 1.4s ease-in-out infinite; }
+.chip.muted { background: #f1f2f7; color: var(--ink-3); }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+
+/* 历史校准折叠组 */
+.cal-group { margin-top: 2px; }
+.cal-group > summary {
+  list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line);
+  background: #fafbfe; font-size: 12px; font-weight: 600; color: var(--ink-2);
+  transition: all .15s; user-select: none;
+}
+.cal-group > summary:hover { border-color: var(--line-2); box-shadow: var(--shadow); }
+.cal-group > summary::-webkit-details-marker { display: none; }
+.cal-group > summary code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-group > summary .cal-meta { font-weight: 400; font-size: 11px; color: var(--ink-3); white-space: nowrap; }
+.cal-group > summary .chev { margin-left: auto; color: var(--ink-3); transition: transform .15s; font-size: 10px; }
+.cal-group[open] > summary .chev { transform: rotate(90deg); }
+.cal-actions { display: grid; gap: 6px; padding: 8px 0 2px; }
+.hist-action { padding: 8px 10px; border-radius: 9px; border: 1px solid var(--line); font-size: 12px; }
+.hist-action .he { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 600; }
+.hist-action .hm { margin-top: 3px; color: var(--ink-3); font-size: 11px; }
+
+/* 当前校准折叠 */
+.cal-group.current { margin-bottom: 14px; }
+.cal-group.current > summary { background: #f5f7ff; border-color: #cdd7fd; }
+.cal-group.current > summary:hover { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79, 110, 247, .08); }
+.cal-group.current > summary .cal-id {
+  display: inline-block; margin-top: 0; flex: 1; min-width: 0;
+  font-size: 11px; padding: 3px 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cal-group.current .action-list { padding: 8px 0 2px; }
+
+/* ═══ 顶部：校准步骤时间线 step1-7 ═══ */
+.steps-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 20px 20px; }
+.steps-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 22px; }
+.steps-head h2 { margin: 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-2); display: flex; align-items: center; gap: 8px; }
+.steps-head h2::before { content: ''; width: 4px; height: 12px; border-radius: 2px; background: var(--grad); }
+.steps-h { display: flex; align-items: flex-start; }
+.step-node { flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; min-width: 0; }
+.step-node:not(:last-child)::after {
+  content: ''; position: absolute; top: 15px; left: calc(50% + 16px); width: calc(100% - 32px); height: 2px;
+  background: var(--line-2); border-radius: 1px;
+}
+.step-node.done:not(:last-child)::after { background: linear-gradient(90deg, var(--ok), #86d3a5); }
+.step-circle {
+  width: 30px; height: 30px; border-radius: 50%; z-index: 1;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12.5px; font-weight: 700; background: #fff;
+  border: 2px solid var(--line-2); color: var(--ink-3);
+}
+.step-node.done .step-circle { background: var(--ok); border-color: var(--ok); color: #fff; }
+.step-node.running .step-circle { background: #fff; border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 4px rgba(79, 110, 247, .14); }
+.step-node.failed .step-circle { background: var(--err); border-color: var(--err); color: #fff; }
+.step-label { margin-top: 9px; font-size: 12px; font-weight: 600; color: var(--ink-2); }
+.step-node.running .step-label { color: var(--accent); }
+.step-desc { margin-top: 2px; font-size: 11px; color: var(--ink-3); white-space: nowrap; }
+.step-status { margin-top: 5px; font-size: 11px; font-weight: 600; }
+.step-node.done .step-status { color: var(--ok); }
+.step-node.running .step-status { color: var(--accent); }
+.step-node.failed .step-status { color: var(--err); }
+.step-node.pending .step-status { color: var(--ink-3); }
+
+/* ═══ 右栏：执行时间线（竖向，全部显示）═══ */
+.card-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 16px; }
+.timeline { display: grid; }
+.tl-item { display: flex; gap: 12px; position: relative; padding-bottom: 18px; }
+.tl-item:last-child { padding-bottom: 0; }
+.tl-item:not(:last-child)::before {
+  content: ''; position: absolute; left: 5px; top: 16px; bottom: 0; width: 2px;
+  background: var(--line-2); border-radius: 1px;
+}
+.tl-dot {
+  width: 12px; height: 12px; border-radius: 50%; background: var(--ink-3);
+  margin-top: 3px; flex-shrink: 0; border: 2px solid #fff; box-shadow: 0 0 0 2px var(--line-2);
+}
+.tl-dot.ok { background: var(--ok); box-shadow: 0 0 0 3px rgba(22, 163, 74, .18); }
+.tl-dot.err { background: var(--err); box-shadow: 0 0 0 3px rgba(225, 29, 72, .14); }
+.tl-dot.running { background: var(--accent); box-shadow: 0 0 0 3px rgba(79, 110, 247, .18); animation: pulse 1.4s ease-in-out infinite; }
+.tl-body { min-width: 0; flex: 1; }
+.tl-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.tl-stage { font-weight: 600; font-size: 13px; white-space: nowrap; }
+.tl-time { color: var(--ink-3); font-size: 11px; flex-shrink: 0; }
+.tl-msg { margin-top: 4px; color: var(--ink-2); font-size: 12px; line-height: 1.5; word-break: break-word; }
+
+/* ── 详情 ── */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.kv { display: grid; }
+.kv-row { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 9px 0; border-bottom: 1px dashed var(--line); }
+.kv-row:last-child { border-bottom: none; }
+.kv-label { color: var(--ink-2); font-size: 13px; flex-shrink: 0; }
+.kv-value { font-size: 13px; font-weight: 500; text-align: right; word-break: break-all; }
+.result-line { margin-top: 12px; font-size: 13px; font-weight: 600; color: var(--accent); }
+.section-divider { border: none; border-top: 1px dashed var(--line-2); margin: 16px 0 2px; }
+.sub-sec-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); margin: 0 0 4px; }
+.artifacts { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.link {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 13px; border-radius: 8px;
+  background: #f1f4ff; color: var(--accent); font-size: 12.5px; font-weight: 600; text-decoration: none; transition: all .15s;
+}
+.link:hover { background: var(--accent); color: #fff; }
+.raw-meta { margin-top: 12px; color: var(--ink-3); font-size: 12px; }
+.outcome {
+  font-size: 13px; color: var(--ink-2); line-height: 1.7; background: #f8f9fd;
+  border: 1px solid var(--line); border-left: 3px solid var(--ok); border-radius: 10px; padding: 12px 14px;
+}
+.outcome.error { background: #fdf6f7; border-left-color: var(--err); color: #be123c; }
+
+/* ═══ 底部三栏：分页面板 ═══ */
+.bottom-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; align-items: stretch; }
+.panel-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+.panel-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 16px 18px; font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2);
+}
+.panel-head::before { content: ''; width: 4px; height: 12px; border-radius: 2px; background: var(--grad); }
+.panel-title { flex: 1; }
+.panel-count {
+  min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px;
+  background: #f1f2f7; color: var(--ink-2); font-size: 11px; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.panel-body { padding: 4px 18px 12px; flex: 1; }
+.tool-item, .cal-item { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.tool-item:last-child, .cal-item:last-child { border-bottom: none; }
+.tool-name { font-weight: 600; font-size: 13px; }
+.tool-desc { margin-top: 4px; color: var(--ink-3); font-size: 12px; line-height: 1.5; }
+.cal-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.cal-info { flex: 1; min-width: 0; }
+.cal-key { font-weight: 600; font-size: 13px; word-break: break-all; }
+.cal-value { margin-top: 4px; color: var(--accent); font-size: 13px; font-weight: 500; }
+.cal-item .chip { flex-shrink: 0; }
+.pager { display: flex; align-items: center; gap: 10px; padding: 10px 18px 14px; border-top: 1px solid var(--line); }
+.pager-btn {
+  width: 26px; height: 26px; border-radius: 7px; border: 1px solid var(--line-2);
+  background: #fff; color: var(--ink-2); cursor: pointer; font-size: 13px; display: inline-flex;
+  align-items: center; justify-content: center; transition: all .15s;
+}
+.pager-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.pager-btn:disabled { opacity: .4; cursor: default; }
+.pager-info { margin-left: auto; font-size: 12px; color: var(--ink-3); }
+
+@media (max-width: 1100px) {
+  .grid { grid-template-columns: 1fr; gap: 20px; }
+  .col-left, .col-right { position: static; }
+  .two-col { grid-template-columns: 1fr; }
+  .bottom-row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">Q</div>
+      <div>
+        <h1>QCal 校准监控</h1>
+        <span class="subtitle">只读监控 · 实验由 Agent 经 Star 发起</span>
+      </div>
+    </div>
+    <span class="status-pill">
+      <i class="dot ok"></i> simulator · qcal-sim-01 / q0
+    </span>
+    <span class="refresh-pill">
+      <span class="spin"></span> 自动刷新 <b>5s</b> · 最后更新 <b id="last-update">--:--:--</b>
+    </span>
+    <div class="agents-pop">
+      <button class="agents-btn" type="button">
+        <i class="dot ok"></i> 在线 Agent <span class="agents-count">2</span>
+      </button>
+      <div class="agents-menu">
+        <div class="agent-row">
+          <div class="name">Calibration Agent</div>
+          <div class="meta">agent-qcal-01 · 接入于 09:12:00 UTC</div>
+        </div>
+        <div class="agent-row">
+          <div class="name">Mixer Tuning Agent</div>
+          <div class="meta">agent-mixer-02 · 接入于 10:40:22 UTC</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- 顶部：step1-7 时间线 -->
+    <section class="steps-card">
+      <div class="steps-head">
+        <h2>校准流程 <code id="cal-id">cal_20260820_004</code></h2>
+        <span class="hint" id="steps-hint"></span>
+      </div>
+      <div class="steps-h" id="steps-h"></div>
+    </section>
+
+    <div class="grid">
+      <!-- 左栏：Action 历史（当前校准按 7 步分类 + 历史校准折叠） -->
+      <aside class="col col-left">
+        <div class="card list-card">
+          <h2 class="sec-title mb">Action 历史</h2>
+
+          <details class="cal-group current" open>
+            <summary>
+              <span class="group-title current"><span class="t-dot"></span>当前校准</span>
+              <code class="cal-id">cal_20260820_004</code>
+              <span class="chev">▶</span>
+            </summary>
+            <div class="action-list" id="current-steps"></div>
+          </details>
+
+          <div class="group-title hist"><span class="t-dot"></span>历史校准</div>
+          <div id="history-groups"></div>
+        </div>
+      </aside>
+
+      <!-- 中栏：详情 -->
+      <div class="col col-main">
+        <div class="two-col">
+          <div class="card">
+            <h3 class="sec-title mb">拟合结果</h3>
+            <div class="kv" id="fit-kv"></div>
+            <div id="fit-result" class="result-line"></div>
+            <hr class="section-divider" />
+            <h4 class="sub-sec-title">候选校准值</h4>
+            <div id="candidate-kv" class="kv"></div>
+          </div>
+          <div class="card">
+            <h3 class="sec-title mb">实验参数</h3>
+            <div class="kv" id="params-kv"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 class="sec-title mb">产物</h3>
+          <div class="artifacts" id="artifacts"></div>
+          <div class="raw-meta" id="raw-meta"></div>
+        </div>
+
+        <div class="card" id="outcome-card">
+          <h3 class="sec-title mb">Outcome</h3>
+          <div class="outcome" id="outcome"></div>
+        </div>
+      </div>
+
+      <!-- 右栏：执行时间线（竖向，全部显示） -->
+      <aside class="col col-right">
+        <section class="card">
+          <div class="card-head">
+            <h2 class="sec-title">执行时间线</h2>
+          </div>
+          <div class="timeline" id="events"></div>
+        </section>
+      </aside>
+    </div>
+
+    <!-- 底部三栏：分页面板 -->
+    <div class="bottom-row">
+      <div class="panel-card">
+        <div class="panel-head"><span class="panel-title">可用工具</span><span class="panel-count" id="count-tools"></span></div>
+        <div class="panel-body" id="list-tools"></div>
+        <div class="pager" id="pager-tools"></div>
+      </div>
+      <div class="panel-card">
+        <div class="panel-head"><span class="panel-title">已确认标定</span><span class="panel-count" id="count-confirmed"></span></div>
+        <div class="panel-body" id="list-confirmed"></div>
+        <div class="pager" id="pager-confirmed"></div>
+      </div>
+      <div class="panel-card">
+        <div class="panel-head"><span class="panel-title">候选校准值</span><span class="panel-count" id="count-candidates"></span></div>
+        <div class="panel-body" id="list-candidates"></div>
+        <div class="pager" id="pager-candidates"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+/* ── 工具函数 ── */
+function formatHz(v) {
+  if (v == null || !isFinite(v)) return '-';
+  const a = Math.abs(v);
+  if (a >= 1e9) return (v / 1e9).toFixed(6) + ' GHz';
+  if (a >= 1e6) return (v / 1e6).toFixed(3) + ' MHz';
+  if (a >= 1e3) return (v / 1e3).toFixed(2) + ' kHz';
+  return v.toFixed(2) + ' Hz';
+}
+function formatValue(v) {
+  if (v == null) return '-';
+  if (typeof v === 'number') {
+    if (!isFinite(v)) return String(v);
+    if (Math.abs(v) >= 1e6 || (Math.abs(v) < 0.001 && v !== 0)) return v.toExponential(4);
+    return Number(v.toFixed(8)).toString();
+  }
+  if (Array.isArray(v)) return v.length + ' 项';
+  if (typeof v === 'object') return JSON.stringify(v);
+  return String(v);
+}
+function statusLabel(s) { return ({ succeeded:'成功', completed:'已完成', running:'进行中', received:'已接收', failed:'失败', pending_agent_review:'待确认', confirmed:'已确认', rejected:'已拒绝' }[s] ?? s ?? '-'); }
+function chipClass(s) {
+  if (s === 'succeeded' || s === 'completed' || s === 'confirmed') return 'ok';
+  if (s === 'failed' || s === 'rejected') return 'err';
+  if (s === 'running' || s === 'pending_agent_review') return 'warn';
+  return 'muted';
+}
+function formatTime(v) { if (!v) return '-'; return String(v).replace('T', ' ').replace('Z', ' UTC'); }
+
+/* ── 单条 Action（详情版） ── */
+function actionItem(a, active) {
+  const chip = `<span class="chip ${chipClass(a.status)}"><i class="dot"></i>${statusLabel(a.status)}</span>`;
+  return `
+    <div class="action-item ${active ? 'active' : ''}">
+      <div class="action-head"><span class="action-name">${a.experiment}</span>${chip}</div>
+      <div class="action-meta"><span class="action-step">${a.step}</span><span>${formatTime(a.timestamp)}</span></div>
+    </div>`;
+}
+
+/* ── 7 步校准流程 ── */
+const STEPS = [
+  { n: 1, label: '读取频扫', desc: 'readout.frequency.g', exp: 'SweepReadout', status: 'done', time: '09:12:05' },
+  { n: 2, label: 'Qubit 频扫', desc: 'qubit.frequency', exp: 'SweepQubit', status: 'done', time: '09:14:31' },
+  { n: 3, label: 'π 脉冲幅度', desc: 'qubit.pi_pulse.amplitude', exp: 'PowerRabi', status: 'done', time: '09:17:40' },
+  { n: 4, label: '激发态读取', desc: 'readout.frequency.e', exp: 'SweepReadoutE', status: 'done', time: '09:20:11' },
+  { n: 5, label: 'T1 测量', desc: 'qubit.t1', exp: 'QubitT1', status: 'running', time: '09:22:05' },
+  { n: 6, label: 'T2 测量', desc: 'qubit.t2 / t2_echo', exp: 'Ramsey / Echo', status: 'pending', time: null },
+  { n: 7, label: '读取保真度', desc: 'readout.single_shot.rayleigh_ratio', exp: 'SingleShot', status: 'pending', time: null }
+];
+
+/* ── 选中 Action（Step4 激发态读取，已成功） ── */
+const ACTIVE = {
+  experiment: 'SweepReadoutE', step: 'Step4', status: 'succeeded',
+  fit: { model: 'lorentzian', center_hz: 6.891235e9, half_width_hz: 1.8e6, r_squared: 0.9971 },
+  result: { parameter: 'readout.frequency.e', value: 6.891235e9, unit: 'Hz' },
+  candidate: { key: 'readout.frequency.e', value: 6.891235e9, unit: 'Hz' },
+  inputs: { readout_frequency: 6.8e9, amp_start: 0.0, amp_stop: 0.1, points: 101, averaging: 1024, pulse_width_s: 80e-9 },
+  artifacts: { data: true, report: true, plot: false },
+  raw: { sweep_name: 'frequency', point_count: 101, valid_point_count: 101 },
+  outcome: { content: '激发态读取频扫完成：在 6.891235 GHz 处发现共振峰，半高宽 1.80 MHz，拟合 R²=0.9971。', isError: false }
+};
+
+/* ── 执行事件（竖向时间线，全部显示） ── */
+const EVENTS = [
+  { stage: 'received', time: '09:20:11', msg: 'Action 已提交至 Env，等待执行' },
+  { stage: 'validating', time: '09:20:12', msg: '正在校验 SweepReadoutE 请求' },
+  { stage: 'executing', time: '09:20:13', msg: '已分发到 simulator 后端' },
+  { stage: 'succeeded', time: '09:20:58', msg: '拟合收敛：center=6.891235 GHz, R²=0.9971' },
+  { stage: 'completed', time: '09:20:59', msg: 'Action 处理完成，产物已归档' }
+];
+
+/* ── 历史校准（可折叠，可收回） ── */
+const HISTORY = [
+  { calibration_id: 'cal_20260820_003', meta: '08:52 完成 · 7 步', actions: [
+    { step: '读取频扫', experiment: 'sweep_readout', status: 'succeeded', timestamp: '2026-08-20T08:41:02Z' },
+    { step: 'Qubit 频扫', experiment: 'sweep_qubit', status: 'succeeded', timestamp: '2026-08-20T08:43:15Z' },
+    { step: 'π 脉冲', experiment: 'power_rabi', status: 'succeeded', timestamp: '2026-08-20T08:45:40Z' },
+    { step: '激发态读取', experiment: 'sweep_readout_e', status: 'succeeded', timestamp: '2026-08-20T08:48:22Z' },
+    { step: 'T1 测量', experiment: 'qubit_t1', status: 'succeeded', timestamp: '2026-08-20T08:52:20Z' }
+  ]},
+  { calibration_id: 'cal_20260820_002', meta: '07:50 完成 · 7 步', actions: [
+    { step: '读取频扫', experiment: 'sweep_readout', status: 'succeeded', timestamp: '2026-08-20T07:35:11Z' },
+    { step: 'Qubit 频扫', experiment: 'sweep_qubit', status: 'succeeded', timestamp: '2026-08-20T07:37:30Z' },
+    { step: 'π 脉冲', experiment: 'power_rabi', status: 'failed', timestamp: '2026-08-20T07:40:05Z' },
+    { step: 'π 脉冲', experiment: 'power_rabi', status: 'succeeded', timestamp: '2026-08-20T07:42:44Z' },
+    { step: '激发态读取', experiment: 'sweep_readout_e', status: 'succeeded', timestamp: '2026-08-20T07:45:10Z' },
+    { step: 'T1 测量', experiment: 'qubit_t1', status: 'succeeded', timestamp: '2026-08-20T07:50:33Z' }
+  ]},
+  { calibration_id: 'cal_20260819_007', meta: '昨天 23:48 · 7 步', actions: [
+    { step: '读取频扫', experiment: 'sweep_readout', status: 'succeeded', timestamp: '2026-08-19T23:31:55Z' },
+    { step: 'Qubit 频扫', experiment: 'sweep_qubit', status: 'succeeded', timestamp: '2026-08-19T23:34:02Z' },
+    { step: 'π 脉冲', experiment: 'power_rabi', status: 'succeeded', timestamp: '2026-08-19T23:36:44Z' },
+    { step: '激发态读取', experiment: 'sweep_readout_e', status: 'succeeded', timestamp: '2026-08-19T23:38:20Z' },
+    { step: 'T1 测量', experiment: 'qubit_t1', status: 'succeeded', timestamp: '2026-08-19T23:41:07Z' },
+    { step: 'T2 测量', experiment: 'ramsey', status: 'succeeded', timestamp: '2026-08-19T23:44:30Z' },
+    { step: '读取保真度', experiment: 'single_shot', status: 'succeeded', timestamp: '2026-08-19T23:48:11Z' }
+  ]}
+];
+
+/* ── 分页面板数据 ── */
+const TOOLS = [
+  { name: 'run_sweep_readout', desc: 'Step1 读取频扫：找读取共振频率' },
+  { name: 'run_sweep_qubit', desc: 'Step2 Qubit 频扫：找 qubit 频率' },
+  { name: 'run_power_rabi', desc: 'Step3 π 脉冲幅度标定' },
+  { name: 'run_sweep_readout_e', desc: 'Step4 激发态读取频扫' },
+  { name: 'run_qubit_t1', desc: 'Step5 T1 测量' },
+  { name: 'run_ramsey', desc: 'Step6 Ramsey T2* 测量' },
+  { name: 'run_echo', desc: 'Step6 Echo T2 测量' },
+  { name: 'run_single_shot', desc: 'Step7 单发直方图' }
+];
+const CONFIRMED = [
+  { key: 'readout.frequency.g', value: 5.213457e9, unit: 'Hz' },
+  { key: 'qubit.frequency', value: 5.891234e9, unit: 'Hz' },
+  { key: 'qubit.pi_pulse.amplitude', value: 0.052, unit: 'a.u.' },
+  { key: 'readout.frequency.e', value: 6.891235e9, unit: 'Hz' },
+  { key: 'qubit.t1', value: 12.34e-6, unit: 's' },
+  { key: 'qubit.t2', value: 8.91e-6, unit: 's' },
+  { key: 'readout.single_shot.rayleigh_ratio', value: 1.87, unit: '' }
+];
+const CANDIDATES = [
+  { key: 'readout.frequency.e', value: 6.891235e9, unit: 'Hz', status: 'pending_agent_review' },
+  { key: 'qubit.t1', value: 12.34e-6, unit: 's', status: 'pending_agent_review' },
+  { key: 'qubit.t2', value: 8.91e-6, unit: 's', status: 'rejected' },
+  { key: 'qubit.t2_echo', value: 7.22e-6, unit: 's', status: 'pending_agent_review' },
+  { key: 'readout.single_shot.rayleigh_ratio', value: 1.87, unit: '', status: 'pending_agent_review' },
+  { key: 'readout.power', value: -18, unit: 'dBm', status: 'pending_agent_review' }
+];
+
+/* ── 渲染：顶部步骤时间线 ── */
+function renderSteps() {
+  const running = STEPS.find(s => s.status === 'running');
+  const done = STEPS.filter(s => s.status === 'done').length;
+  document.getElementById('steps-hint').textContent =
+    running ? `第 ${running.n} / 7 步 · ${running.label} 进行中` : `${done} / 7 步完成`;
+  const stLabel = { done:'✓ 完成', running:'进行中', pending:'待执行', failed:'失败' };
+  document.getElementById('steps-h').innerHTML = STEPS.map(s => `
+    <div class="step-node ${s.status}">
+      <div class="step-circle">${s.n}</div>
+      <div class="step-label">${s.label}</div>
+      <div class="step-desc">${s.desc}</div>
+      <div class="step-status">${stLabel[s.status]}</div>
+    </div>`).join('');
+}
+
+/* ── 当前校准的全部 action（按 7 个大步骤分组） ── */
+const CURRENT_ACTIONS = [
+  { n: 1, action_id: 'act_004_01', experiment: 'sweep_readout', status: 'succeeded', timestamp: '2026-08-20T09:12:05Z' },
+  { n: 1, action_id: 'act_004_02', experiment: 'sweep_readout', status: 'succeeded', timestamp: '2026-08-20T09:12:58Z' },
+  { n: 2, action_id: 'act_004_03', experiment: 'sweep_qubit', status: 'succeeded', timestamp: '2026-08-20T09:14:31Z' },
+  { n: 3, action_id: 'act_004_04', experiment: 'power_rabi', status: 'succeeded', timestamp: '2026-08-20T09:17:40Z' },
+  { n: 4, action_id: 'act_004_05', experiment: 'sweep_readout_e', status: 'succeeded', timestamp: '2026-08-20T09:20:11Z' },
+  { n: 5, action_id: 'act_004_06', experiment: 'qubit_t1', status: 'running', timestamp: '2026-08-20T09:22:05Z' }
+];
+const ACTIVE_ACTION_ID = 'act_004_05';
+
+/* ── 渲染：当前校准（7 步分组，每步下展示全部 action） ── */
+function renderCurrentSteps() {
+  document.getElementById('current-steps').innerHTML = STEPS.map(s => {
+    const acts = CURRENT_ACTIONS.filter(a => a.n === s.n);
+    const body = acts.length
+      ? acts.map(a => {
+          const chip = `<span class="chip ${chipClass(a.status)}"><i class="dot"></i>${statusLabel(a.status)}</span>`;
+          const active = a.action_id === ACTIVE_ACTION_ID;
+          return `
+            <div class="action-item ${active ? 'active' : ''}">
+              <div class="action-head"><span class="action-name">${a.experiment}</span>${chip}</div>
+              <div class="action-meta"><span>${formatTime(a.timestamp)}</span></div>
+            </div>`;
+        }).join('')
+      : `<div class="step-empty">待执行</div>`;
+    return `
+      <div class="step-group">
+        <div class="step-group-head">
+          <span class="step-badge ${s.status}">${s.n}</span>
+          <span class="step-group-label">${s.label}</span>
+          <span class="step-group-desc">${s.desc}</span>
+        </div>
+        <div class="step-group-body">${body}</div>
+      </div>`;
+  }).join('');
+}
+
+/* ── 渲染：历史校准（可折叠） ── */
+function renderHistory() {
+  document.getElementById('history-groups').innerHTML = HISTORY.map(g => `
+    <details class="cal-group">
+      <summary>
+        <code>${g.calibration_id}</code>
+        <span class="cal-meta">${g.meta}</span>
+        <span class="chev">▶</span>
+      </summary>
+      <div class="cal-actions">${g.actions.map(a => actionItem(a, false)).join('')}</div>
+    </details>`).join('');
+}
+
+/* ── 渲染：执行时间线（竖向） ── */
+function renderEvents() {
+  const stageLabel = s => ({ received:'已接收', validating:'校验中', validated:'已校验', executing:'执行中', running:'进行中', succeeded:'成功', completed:'已完成', failed:'失败', file_read:'读取文件' }[s] ?? s);
+  const dotClass = s => {
+    if (s === 'succeeded' || s === 'completed') return 'ok';
+    if (s === 'failed') return 'err';
+    if (s === 'running' || s === 'executing' || s === 'validating') return 'running';
+    return '';
+  };
+  document.getElementById('events').innerHTML = EVENTS.map(e => `
+    <div class="tl-item">
+      <i class="tl-dot ${dotClass(e.stage)}"></i>
+      <div class="tl-body">
+        <div class="tl-head"><span class="tl-stage">${stageLabel(e.stage)}</span><span class="tl-time">${e.time}</span></div>
+        <div class="tl-msg">${e.msg}</div>
+      </div>
+    </div>`).join('');
+}
+
+/* ── 渲染：详情 ── */
+function renderDetail() {
+  const fit = ACTIVE.fit || {};
+  const fitRows = [
+    ['拟合模型', fit.model ?? '-'], ['中心频率', formatHz(fit.center_hz)],
+    ['半高宽', formatHz(fit.half_width_hz)], ['R²', fit.r_squared != null ? Number(fit.r_squared).toFixed(4) : '-']
+  ];
+  document.getElementById('fit-kv').innerHTML = fitRows.map(([l, v]) => `<div class="kv-row"><span class="kv-label">${l}</span><span class="kv-value">${v}</span></div>`).join('');
+  document.getElementById('fit-result').textContent = `${ACTIVE.result.parameter} = ${formatHz(ACTIVE.result.value)} ${ACTIVE.result.unit}`;
+
+  const c = ACTIVE.candidate;
+  document.getElementById('candidate-kv').innerHTML = c
+    ? `<div class="kv-row"><span class="kv-label">${c.key}</span><span class="kv-value">${formatHz(c.value)} ${c.unit}</span></div>`
+    : `<div class="empty">暂无候选值</div>`;
+
+  document.getElementById('params-kv').innerHTML = Object.entries(ACTIVE.inputs).map(([name, value]) =>
+    `<div class="kv-row"><span class="kv-label mono">${name}</span><span class="kv-value mono">${formatValue(value)}</span></div>`).join('');
+
+  const a = ACTIVE.artifacts || {};
+  const links = [];
+  if (a.data) links.push('<a class="link" href="#">⬇ data.csv</a>');
+  if (a.report) links.push('<a class="link" href="#">⬇ report.md</a>');
+  document.getElementById('artifacts').innerHTML = links.length ? links.join('') : '<span class="empty">暂无产物</span>';
+  document.getElementById('raw-meta').textContent = `扫描轴 ${ACTIVE.raw.sweep_name} · ${ACTIVE.raw.point_count} 点 · 有效 ${ACTIVE.raw.valid_point_count}`;
+
+  document.getElementById('outcome').textContent = ACTIVE.outcome.content;
+}
+
+/* ── 分页 ── */
+const PER_PAGE = 5;
+const page = { tools: 1, confirmed: 1, candidates: 1 };
+const PANELS = {
+  tools: {
+    data: TOOLS,
+    render: items => items.map(t => `<div class="tool-item"><div class="tool-name">${t.name}</div><div class="tool-desc">${t.desc}</div></div>`).join('')
+  },
+  confirmed: {
+    data: CONFIRMED,
+    render: items => items.map(c => `<div class="cal-item"><div class="cal-info"><div class="cal-key">${c.key}</div><div class="cal-value mono">${formatHz(c.value)} ${c.unit}</div></div></div>`).join('')
+  },
+  candidates: {
+    data: CANDIDATES,
+    render: items => items.map(c => `
+      <div class="cal-item">
+        <div class="cal-info">
+          <div class="cal-key">${c.key}</div>
+          <div class="cal-value mono">${formatHz(c.value)} ${c.unit}</div>
+        </div>
+        <span class="chip ${chipClass(c.status)}"><i class="dot"></i>${statusLabel(c.status)}</span>
+      </div>`).join('')
+  }
+};
+function renderPager(key) {
+  const arr = PANELS[key].data;
+  const total = Math.max(1, Math.ceil(arr.length / PER_PAGE));
+  if (page[key] > total) page[key] = total;
+  const start = (page[key] - 1) * PER_PAGE;
+  const slice = arr.slice(start, start + PER_PAGE);
+  document.getElementById('count-' + key).textContent = arr.length;
+  document.getElementById('list-' + key).innerHTML = PANELS[key].render(slice);
+  document.getElementById('pager-' + key).innerHTML = `
+    <button class="pager-btn" ${page[key] <= 1 ? 'disabled' : ''} onclick="goPage('${key}', ${page[key] - 1})">‹</button>
+    <span class="pager-info">${page[key]} / ${total}</span>
+    <button class="pager-btn" ${page[key] >= total ? 'disabled' : ''} onclick="goPage('${key}', ${page[key] + 1})">›</button>`;
+}
+window.goPage = (key, n) => { page[key] = n; renderPager(key); };
+
+/* ── 自动刷新 ── */
+function tick() {
+  const now = new Date();
+  const p = n => String(n).padStart(2, '0');
+  document.getElementById('last-update').textContent = `${p(now.getHours())}:${p(now.getMinutes())}:${p(now.getSeconds())}`;
+}
+tick();
+setInterval(tick, 5000);
+
+/* ── 初始化 ── */
+renderSteps();
+renderCurrentSteps();
+renderHistory();
+renderEvents();
+renderDetail();
+renderPager('tools');
+renderPager('confirmed');
+renderPager('candidates');
+</script>
+</body>
+</html>

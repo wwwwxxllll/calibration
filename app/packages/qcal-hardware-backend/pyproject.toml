@@ -1,0 +1,16 @@
+[project]
+name = "qcal-hardware-backend"
+version = "0.1.0"
+description = "Reserved hardware backend boundary for qcal Env"
+requires-python = ">=3.11"
+dependencies = ["qcal-contracts"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/qcal_hardware_backend"]
+
+[tool.uv.sources]
+qcal-contracts = { workspace = true }

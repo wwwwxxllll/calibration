@@ -1,0 +1,42 @@
+# 脱敏配置模板：复制为 configs.toml 后填入真实凭据。
+# 注意：configs.toml 已被 .gitignore 排除，切勿提交或推送真实 key。
+
+[default]
+model_id = ""
+embedding_model_id = ""
+rerank_model_id = ""
+
+[providers.aws]
+region = ""
+aws_bearer_token_bedrock = ""
+
+[providers.openai]
+base_url = ""
+api_key = ""
+
+[providers.deepseek]
+api_key = ""
+
+[providers.google]
+vertexai = false
+api_key = ""
+
+[providers.infinigence]
+api_key = ""
+
+[providers.anthropic]
+api_key = ""
+region = ""
+aws_access_key = ""
+aws_secret_key = ""
+
+[providers.menglong]
+base_url = ""
+api_key = ""
+
+[providers.xiaomi]
+base_url = ""
+api_key = ""
+
+[providers.xiaomi.models.mimo-v2.5]
+extra_body = { thinking = { type = "" } }

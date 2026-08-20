@@ -1,0 +1,92 @@
+name: qcal
+
+services:
+  star-hub:
+    image: qcal-backend:local
+    build:
+      context: .
+      dockerfile: app/Dockerfile
+    command:
+      - .venv/bin/python
+      - scripts/run_star_hub.py
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8765"
+      - --message-dir
+      - data/star/star-messages
+    expose:
+      - "8765"
+    volumes:
+      - ./deploy-data:/app/app/data
+    healthcheck:
+      test: ["CMD", ".venv/bin/python", "-c", "import socket; s=socket.create_connection(('127.0.0.1',8765),2); s.close()"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  qcal-env:
+    image: qcal-backend:local
+    build:
+      context: .
+      dockerfile: app/Dockerfile
+    command:
+      - .venv/bin/python
+      - scripts/run_env.py
+      - --config
+      - profiles/env.docker.json
+    expose:
+      - "8000"
+    volumes:
+      - ./deploy-data:/app/app/data
+    depends_on:
+      star-hub:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", ".venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/state', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    ports:
+      - "3001:80"
+    depends_on:
+      qcal-env:
+        condition: service_healthy
+    restart: unless-stopped
+
+  agent:
+    profiles: ["agent"]
+    build:
+      context: .
+      dockerfile: agent/Dockerfile
+    command:
+      - --config
+      - /run/secrets/agent-config.toml
+      - --server-url
+      - ws://star-hub:8765
+      - --env-id
+      - qcal-env
+      - --model
+      - ${QCAL_MODEL:-deepseek/deepseek-v4-flash}
+      - --max-rounds
+      - "120"
+      - --max-actions
+      - "120"
+      - ${QCAL_REQUEST:-帮我校准}
+    volumes:
+      - ${AGENT_CONFIG_PATH:-./agent/configs.toml}:/run/secrets/agent-config.toml:ro
+    depends_on:
+      star-hub:
+        condition: service_healthy
+      qcal-env:
+        condition: service_healthy
+    restart: "no"

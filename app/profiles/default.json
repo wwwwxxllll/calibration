@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "device_id": "virtual_device_A",
+  "seed": 20260810,
+  "quantum_system": {
+    "qubit": {
+      "frequency_hz": 5076000000.0,
+      "anharmonicity_hz": -220000000.0,
+      "levels": 3,
+      "t1_s": 0.000045,
+      "pure_dephasing_time_s": 0.00008,
+      "thermal_excited_population": 0.025,
+      "linewidth_hz": 5000000.0,
+      "pi_amplitude": 1.0
+    },
+    "readout_cavity": {
+      "frequency_hz": 7556000000.0,
+      "hilbert_dim": 20,
+      "kappa_external_hz": 1800000.0,
+      "kappa_internal_hz": 300000.0
+    },
+    "storage_cavity": {
+      "enabled": false,
+      "frequency_hz": 4200000000.0,
+      "hilbert_dim": 15,
+      "lifetime_s": 0.0012
+    },
+    "couplings": {
+      "qubit_readout_g_hz": 85000000.0,
+      "qubit_storage_g_hz": 12000000.0
+    }
+  },
+  "control_chain": {
+    "qubit_amplitude_scale": 1000000.0,
+    "gaussian_bandwidth_hz": 150000000.0,
+    "readout_sqrt_hz_per_dac_code": 2.5,
+    "qubit_pi_dac_code": 700.0
+  },
+  "measurement_chain": {
+    "output_field": "reflection",
+    "gain": 1.0,
+    "iq_rotation_rad": 0.0,
+    "i_offset": 0.0,
+    "q_offset": 0.0,
+    "amplifier_noise": 0.0,
+    "adc_noise": 0.0,
+    "adc_clip": 0.0
+  },
+  "drift": {
+    "qubit_frequency": {
+      "model": "random_walk",
+      "sigma_hz_per_sqrt_s": 1500.0
+    },
+    "readout_frequency": {
+      "model": "slow_sinusoid",
+      "amplitude_hz": 80000.0,
+      "period_s": 3600.0
+    }
+  },
+  "faults": {
+    "missing_point_probability": 0.0,
+    "timeout_probability": 0.0
+  }
+}

@@ -1,0 +1,30 @@
+name: qcal-step1-step2
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  MPLBACKEND: Agg
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@v9
+        with:
+          version: latest-known
+          enable-cache: true
+      - run: uv sync --frozen --all-packages --extra server --extra star
+      # Upstream's pyproject points to a missing repository-external ../MengLong.
+      # QCal does not use that demo dependency, so install the pinned SDK only.
+      - run: uv pip install --no-deps "git+https://github.com/GCYYfun/star-protocol.git@99a87c6b43bc4142fc50fba88c76bd32220927c8"
+      - run: uv run pytest -q
+      - run: uv run python scripts/run_env.py --config profiles/env.example.json --check
