@@ -7,7 +7,6 @@
 **/node_modules
 **/.npm-cache
 **/dist
-**/.npm-cache
 app/data
 app/app.log
 agent/configs.toml
