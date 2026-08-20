@@ -398,3 +398,109 @@ docker compose --profile agent run --rm agent
 
 ```bash
 cd /path/to/calibration
+docker compose up -d star-hub qcal-env frontend
+docker compose --profile agent run --rm agent
+```
+
+然后访问：
+
+<http://127.0.0.1:3001>
+
+## 数据输出
+
+完整 Star 流程的数据默认保存在：
+
+```text
+app/data/star/
+├── star-messages/            # Agent、Hub 和 Env 的消息记录
+├── actions/{action_id}/      # 单次实验结果
+│   ├── result.json
+│   ├── data.csv
+│   ├── plot.png
+│   └── report.md
+└── calibrations.json         # 已确认的校准结果
+```
+
+## 常用检查命令
+
+检查后端配置及工具：
+
+```bash
+cd app
+uv run python scripts/run_env.py --config profiles/env.star.json --check
+uv run python scripts/run_env.py --config profiles/env.star.json --print-tools
+```
+
+运行后端测试：
+
+```bash
+cd app
+uv run pytest -q
+```
+
+构建前端：
+
+```bash
+cd web
+npm run build
+```
+
+## 常见问题
+
+### 打开文件后没有“运行”按钮
+
+本项目由多个服务组成，不能通过运行 `README.md`、`.vue` 或 `.json` 文件启动。请在终端中使用本说明提供的命令。Python 入口文件主要是：
+
+- `app/scripts/run_star_hub.py`
+- `app/scripts/run_env.py`
+- `agent/calibration_agent.py`
+
+### 前端页面没有数据
+
+确认后端正在监听 `127.0.0.1:8000`。如果要查看 Agent 的实时校准流程，应使用 `app/profiles/env.star.json` 启动 Env，并同时启动 Hub 和 Agent。
+
+### Agent 无法连接
+
+依次检查：
+
+1. Star Hub 是否已启动并监听 `127.0.0.1:8765`。
+2. Env 是否使用 `app/profiles/env.star.json` 启动。
+3. Agent 和 Env 的 `server-url` 是否一致。
+4. Agent 的 `env-id` 是否为 `qcal-env`。
+
+### 出现 `VIRTUAL_ENV ... does not match` 或 `No module named 'star_protocol'`
+
+这通常表示当前激活了 `agent/.venv`，但正在安装或运行后端。先退出当前环境，
+再把 `star-protocol` 明确安装到后端环境：
+
+```bash
+deactivate
+cd app
+uv sync --all-packages --extra server --extra star
+uv pip install --python .venv/bin/python --no-deps \
+  "git+https://github.com/GCYYfun/star-protocol.git@99a87c6b43bc4142fc50fba88c76bd32220927c8"
+uv run python -c "import star_protocol; print(star_protocol.__file__)"
+```
+
+如果当前本来就没有激活虚拟环境，`deactivate` 命令不存在，可以直接从 `cd app`
+开始。若终端已经位于 `app`，则不要再次执行 `cd app`。
+
+### 端口被占用
+
+默认端口：
+
+- Star Hub：`8765`
+- 后端 HTTP API：`8000`
+- 前端 Vite：`5173`
+
+先停止占用相应端口的旧进程，再重新启动服务。
+
+## 停止服务
+
+在各个运行服务的终端中按 `Ctrl+C`。建议按照 Agent、前端、Env、Hub 的顺序停止。
+
+更多实现细节参见：
+
+- `app/README.md`
+- `agent/README.md`
+- `web/README.md`
