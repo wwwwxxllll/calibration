@@ -3,17 +3,24 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
+from qcal_env.events import Broker
 from qcal_env.runtime import CalibrationEnv
 
 
-def create_app(env: CalibrationEnv, *, star_transport: Any | None = None) -> FastAPI:
+def create_app(
+    env: CalibrationEnv,
+    *,
+    star_transport: Any | None = None,
+    broker: Broker | None = None,
+) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         del app
@@ -74,6 +81,34 @@ def create_app(env: CalibrationEnv, *, star_transport: Any | None = None) -> Fas
     @app.get("/calibrations")
     def calibrations() -> dict[str, object]:
         return env.store.calibrations()
+
+    @app.get("/events")
+    async def events() -> StreamingResponse:
+        async def stream():
+            # Ask the EventSource to auto-reconnect after a 2s gap.
+            yield "retry: 2000\n\n"
+            if broker is None:
+                # No Star transport wired (manual mode): keep the connection
+                # open but idle.
+                while True:
+                    yield ": ping\n\n"
+                    await asyncio.sleep(15)
+                return  # pragma: no cover
+            async for event in broker.subscribe():
+                if event is None:
+                    yield ": ping\n\n"
+                else:
+                    yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+
+        return StreamingResponse(
+            stream(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
 
     @app.get("/files/{action_id}/{filename:path}")
     def file(action_id: str, filename: str) -> FileResponse:

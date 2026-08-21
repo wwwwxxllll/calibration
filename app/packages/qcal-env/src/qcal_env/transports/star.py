@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 
+from qcal_env.events import Broker
 from qcal_env.runtime import ActionContext, CalibrationEnv
 
 
@@ -17,9 +18,17 @@ EnvelopeHandler = Callable[[Any], Awaitable[dict[str, object]]]
 class StarTransport:
     """Connect one CalibrationEnv to Hub and handle full Action envelopes."""
 
-    def __init__(self, env: CalibrationEnv, client: Any, *, message_dir: str | Path | None = None) -> None:
+    def __init__(
+        self,
+        env: CalibrationEnv,
+        client: Any,
+        *,
+        broker: Broker | None = None,
+        message_dir: str | Path | None = None,
+    ) -> None:
         self.env = env
         self.client = client
+        self.broker = broker
         self.message_dir = Path(message_dir) if message_dir else env.store.root / "star-messages"
         self.connected_agents: dict[str, dict[str, object]] = {}
 
@@ -29,6 +38,10 @@ class StarTransport:
 
     def connected_agent_list(self) -> list[dict[str, object]]:
         return list(self.connected_agents.values()) if self.hub_connected else []
+
+    async def _notify(self, kind: str) -> None:
+        if self.broker is not None:
+            await self.broker.publish({"type": kind})
 
     def bind(self) -> None:
         self.client.qcal_action_receiver = self._handler
@@ -50,6 +63,7 @@ class StarTransport:
             "connected_at": datetime.now(UTC).isoformat(),
             "metadata": metadata,
         }
+        await self._notify("agents")
 
         tools = self.env.public_tools
         await self.client.send_event(
@@ -73,6 +87,7 @@ class StarTransport:
         agent_id = (message.data or {}).get("agent_id")
         if isinstance(agent_id, str) and agent_id:
             self.connected_agents.pop(agent_id, None)
+            await self._notify("agents")
             print(f"[QCal Env agent left] {agent_id}", flush=True)
 
     async def _handler(self, envelope: Any) -> dict[str, object]:
@@ -118,6 +133,7 @@ class StarTransport:
                 "Action 执行失败",
                 {"error": outcome["content"]},
             )
+            await self._notify("actions")
             return outcome
         context = ActionContext(
             action_id=action_id,
@@ -160,6 +176,7 @@ class StarTransport:
             result_rendered + "\n",
             encoding="utf-8",
         )
+        await self._notify("actions")
         return result
 
     async def run(self) -> None:

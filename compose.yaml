@@ -19,6 +19,9 @@ services:
       - "8765"
     volumes:
       - ./app/data:/app/app/data
+      - ./app/packages:/app/app/packages
+      - ./app/scripts:/app/app/scripts
+      - ./app/profiles:/app/app/profiles
     healthcheck:
       test: ["CMD", ".venv/bin/python", "-c", "import socket; s=socket.create_connection(('127.0.0.1',8765),2); s.close()"]
       interval: 10s
@@ -41,6 +44,9 @@ services:
       - "8000"
     volumes:
       - ./app/data:/app/app/data
+      - ./app/packages:/app/app/packages
+      - ./app/scripts:/app/app/scripts
+      - ./app/profiles:/app/app/profiles
     depends_on:
       star-hub:
         condition: service_healthy

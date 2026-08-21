@@ -138,5 +138,5 @@ GET /files/{action_id}/plot.png
   | Step4 | readout.frequency.e | | Hz | |
   | Step5 | qubit.t1 | | s | |
   | Step6 | qubit.t2 / qubit.t2_echo | | s | |
-  | Step7 | readout.single_shot.rayleigh_ratio | | – | |
+  | Step7 | readout.single_shot.threshold | | a.u. | |
   ```

@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from qcal_env import CalibrationEnv, FileStore, TOOL_DEFINITIONS
+from qcal_env.events import Broker
 from qcal_env.transports import StarTransport, create_app, create_star_environment_client
 from qcal_hardware_backend import HardwareAdapter
 from qcal_qutip_backend import QuTiPAdapter
@@ -106,6 +107,7 @@ def main() -> None:
         )
         return
 
+    broker = Broker()
     star_transport = None
     if config.star_enabled:
         client = create_star_environment_client(
@@ -113,8 +115,8 @@ def main() -> None:
             config.star_env_id,
             metadata={"mode": env.backend_mode, "tools": env.public_tools},
         )
-        star_transport = StarTransport(env, client)
-    app = create_app(env, star_transport=star_transport)
+        star_transport = StarTransport(env, client, broker=broker)
+    app = create_app(env, star_transport=star_transport, broker=broker)
 
     try:
         import uvicorn

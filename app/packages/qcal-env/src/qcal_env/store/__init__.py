@@ -141,13 +141,6 @@ class FileStore:
             "status": "pending_agent_review",
             "created_at": _now(),
         }
-        for item in store["candidates"]:
-            if (
-                item.get("calibration_id") == calibration_id
-                and item.get("key") == key
-                and item.get("status") == "pending_agent_review"
-            ):
-                item["status"] = "rejected"
         store["candidates"].append(candidate)
         self._write_json(self.calibrations_path, store)
         return candidate
@@ -185,6 +178,14 @@ class FileStore:
             }
             store["active"][_active_key(str(candidate["key"]), calibration_id)] = calibration
             confirmed.append(calibration)
+        for candidate in confirmed:
+            for item in store["candidates"]:
+                if (
+                    item.get("calibration_id") == calibration_id
+                    and item.get("key") == candidate["key"]
+                    and item.get("status") == "pending_agent_review"
+                ):
+                    item["status"] = "rejected"
         self._write_json(self.calibrations_path, store)
         return confirmed
 

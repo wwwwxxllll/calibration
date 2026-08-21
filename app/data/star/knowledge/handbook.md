@@ -1,14 +1,39 @@
-# 校准知识手册
+# QCal 校准知识手册（common）
 
-## 历史默认参数
+> 本文件由人类专家初始化与维护，后期也可由 Agent 通过工具更新。
+> 内容：各实验的合格判据、历史默认参数、调参经验与常见问题。
+> 首次标定某步骤前、以及调参无方向时阅读本手册。
 
-| 工具 | 参数 | 历史默认值 |
-|---|---|---|
-| MeasureReadoutFrequencyG / E | Readoutstep1 | 1e6 Hz |
-| MeasureReadoutFrequencyG | readout_amp / measuretime / waittime / expected_cycle_length | 4000 / 2000 ns / 100 ns / 200000 |
-| MeasureQubitFrequency | Qubitstep1 / amp180 / mysigma / coeff | 1e6 Hz / 700 / 20 ns / 30 |
-| MeasurePiPulseAmplitude | numstep / RabiStep | 41 / 350 |
-| MeasureT1 | numstep / timeStep | 41 / 5000 ns |
-| MeasureT2Star | numstep / timeStep | 81 / 2500 ns |
-| MeasureT2Echo | numstep / timeStep | 81 / 2000 ns |
-| MeasureSingleShotReadout | bin | 200 |
+
+
+## 合格判据
+
+各步骤分析完成后，Agent 需依据对应判据决定是否确认该步的候选标定值（`ConfirmCalibration`）。
+
+### Step 1–6（频率 / π 脉冲幅度 / 寿命类）
+
+- 报告中有效的判据为拟合优度 R²。仅靠 R² 不足以确认，必须**缩小范围和步长**做细扫，且 R² 在整个过程中始终保持较高水平，才可确认目标值。
+
+### Step 7: SingleShotHistogram（单发读出）
+
+候选标定值为判态阈值 `readout.single_shot.threshold`（单位 a.u.）。确认门槛为以下三条判据**同时通过**：
+
+1. **二维高斯拟合优度**：g/e 态投影直方图的二维高斯边际拟合 R² 均 > 0.9（`R²_g > 0.9` 且 `R²_e > 0.9`）。
+2. **瑞利判据**：两态分布中心沿判别轴的分离度 d 大于两态投影半高全宽之和（`d > FWHM_g + FWHM_e`）。
+3. **判态概率**：判态正确率 gg 与 ee 均 > 0.9（`gg > 0.9` 且 `ee > 0.9`）。
+
+判据未通过时，说明读出分离度不足，Agent 不应确认该候选值，需调整读取参数（如 `readout_amp`、`measuretime`）或读取频率后重跑。
+
+## 初始参数与调参经验
+
+- 当拟合结果 R² 较高，但半高宽与步长（或扫描频段范围）之比较小时，属于**粗扫**。通常需要**细扫**：在中心频率附近缩小起始/终止范围并减小步长，直到得到较精确的频率才能确认标定。
+
+- 如果反复得不到符合要求的目标值，可以**查看之前的候选值**，从中选一个较高的进行确认标定。
+
+- 为防止扫描点数过多，在放大频率范围的**粗扫**时应调大步长；在缩小频率范围的**细扫**时应缩小步长。
+
+- 多次找不到合适频率时，可尝试**增大范围、减小步长、并降低 roundRobin**，先得到一个覆盖面广且足够细致的结果；找到合适频率后再**在附近缩小范围、缩小步长、提高 roundRobin**，以降低随机性。
+
+## 常见问题
+
+（待填写）

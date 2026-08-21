@@ -203,32 +203,6 @@ docker compose --profile agent build
 
 只有首次部署，或代码、依赖发生变化时需要重新构建。
 
-如果构建时 Docker 访问 Docker Hub 较慢，可以先单独拉取基础镜像：
-
-```bash
-docker pull python:3.13-slim
-docker pull node:20-alpine
-docker pull nginx:1.27-alpine
-```
-
-看到类似下面的错误时，通常不是项目代码问题，而是 Docker Hub 网络超时：
-
-```text
-failed to fetch oauth token: Post "https://auth.docker.io/token": i/o timeout
-```
-
-可以打开代理、切换网络，或给 Docker Desktop 配置镜像加速器后重试。
-
-如果看到：
-
-```text
-pull access denied for qcal-backend, repository does not exist
-```
-
-这通常表示本地还没有 `qcal-backend:local` 镜像。Compose 会先尝试拉取同名镜像，失败后再按 `app/Dockerfile` 构建本地镜像。真正需要关注的是后续构建是否能成功拉到 `python:3.13-slim`。
-
-网络不稳定时，不建议一上来使用 `--no-cache`，因为它会强制重新拉取基础镜像，更容易遇到 Docker Hub 超时。
-
 ### 二、日常运行
 
 #### 1. 启动基础服务
@@ -258,7 +232,7 @@ docker compose ps
 ```text
 star-hub   healthy
 qcal-env   healthy
-frontend   running
+web        running
 ```
 
 本机打开前端：
@@ -504,3 +478,8 @@ uv run python -c "import star_protocol; print(star_protocol.__file__)"
 - `app/README.md`
 - `agent/README.md`
 - `web/README.md`
+
+## 八、报错解决
+- `docker pull python:3.13-slim`
+- `docker pull node:20-alpine`
+- `docker pull nginx:1.27-alpine`

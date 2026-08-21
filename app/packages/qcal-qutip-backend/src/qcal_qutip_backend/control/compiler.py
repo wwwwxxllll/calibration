@@ -26,9 +26,8 @@ from qcal_qutip_backend.control.sequences import CompiledExperiment, CompiledPoi
 
 
 class ExperimentCompiler:
-    def __init__(self, control: ControlChainConfig, *, readout_ssb_hz: float = 50.0e6):
+    def __init__(self, control: ControlChainConfig):
         self._control = control
-        self._readout_ssb_hz = readout_ssb_hz
 
     def compile(self, plan: ExperimentPlan) -> CompiledExperiment:
         if isinstance(plan, SweepReadoutPlan):
@@ -54,7 +53,7 @@ class ExperimentCompiler:
             plan.ReadoutStartFreq1,
             plan.ReadoutStopFreq1,
             plan.Readoutstep1,
-        ) - self._readout_ssb_hz
+        )
         amplitude = plan.readout_amp * self._control.readout_sqrt_hz_per_dac_code
         readout_duration_s = plan.measuretime * 1.0e-9
         points = tuple(
@@ -152,7 +151,7 @@ class ExperimentCompiler:
             plan.ReadoutStartFreq1,
             plan.ReadoutStopFreq1,
             plan.Readoutstep1,
-        ) - self._readout_ssb_hz
+        )
         readout_amplitude = plan.readout_amp * self._control.readout_sqrt_hz_per_dac_code
         readout_duration_s = plan.measuretime * 1.0e-9
         points = tuple(

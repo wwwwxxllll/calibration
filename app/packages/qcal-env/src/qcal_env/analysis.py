@@ -464,30 +464,61 @@ def analyze_single_shot(raw: RawResult) -> dict[str, object]:
     e_mask = np.asarray([label == "e" for label in labels], dtype=bool)
     if not np.any(g_mask) or not np.any(e_mask):
         raise ValueError("Single Shot 需要同时包含 g/e 两组散点。")
-    g_center = np.array([np.nanmean(raw.i_values[g_mask]), np.nanmean(raw.q_values[g_mask])])
-    e_center = np.array([np.nanmean(raw.i_values[e_mask]), np.nanmean(raw.q_values[e_mask])])
+
+    g_i = raw.i_values[g_mask]
+    g_q = raw.q_values[g_mask]
+    e_i = raw.i_values[e_mask]
+    e_q = raw.q_values[e_mask]
+    g_center = np.array([np.nanmean(g_i), np.nanmean(g_q)])
+    e_center = np.array([np.nanmean(e_i), np.nanmean(e_q)])
+
+    # 二维高斯拟合：均值 + 协方差的 MLE，沿判别轴方向的方差 σ² = aᵀΣa。
+    g_cov = np.cov(np.column_stack([g_i, g_q]), rowvar=False)
+    e_cov = np.cov(np.column_stack([e_i, e_q]), rowvar=False)
+
     values = raw.i_values + 1j * raw.q_values
     origin = complex(g_center[0], g_center[1])
     axis = _discrimination_axis(origin, complex(e_center[0], e_center[1]))
     g_projection = _project_onto_axis(values[g_mask], origin, axis)
     e_projection = _project_onto_axis(values[e_mask], origin, axis)
-    threshold, assignment_fidelity = _best_threshold(g_projection, e_projection)
+
+    axis_vector = np.array([axis.real, axis.imag])
+    g_sigma = float(np.sqrt(max(axis_vector @ g_cov @ axis_vector, np.finfo(float).eps)))
+    e_sigma = float(np.sqrt(max(axis_vector @ e_cov @ axis_vector, np.finfo(float).eps)))
+    fwhm_g = _fwhm(g_sigma)
+    fwhm_e = _fwhm(e_sigma)
+
+    separation = float(np.linalg.norm(e_center - g_center))
+    threshold, _ = _best_threshold(g_projection, e_projection)
     g_correct = float(np.mean(g_projection < threshold))
     e_correct = float(np.mean(e_projection >= threshold))
     thermal = float(np.mean(g_projection >= threshold))
-    separation = float(np.linalg.norm(e_center - g_center))
-    g_spread = float(np.nanmean(np.linalg.norm(np.column_stack([raw.i_values[g_mask], raw.q_values[g_mask]]) - g_center, axis=1)))
-    e_spread = float(np.nanmean(np.linalg.norm(np.column_stack([raw.i_values[e_mask], raw.q_values[e_mask]]) - e_center, axis=1)))
+
+    bin_count = _single_shot_bin_count(raw.metadata.get("histogram_bins"))
+    r2_g = _projection_gaussian_r2(g_projection, center=0.0, sigma=g_sigma, bins=bin_count)
+    r2_e = _projection_gaussian_r2(e_projection, center=separation, sigma=e_sigma, bins=bin_count)
+
+    r2_pass = bool(r2_g > 0.9 and r2_e > 0.9)
+    rayleigh_pass = bool(separation > fwhm_g + fwhm_e)
+    gg_ee_pass = bool(g_correct > 0.9 and e_correct > 0.9)
+
     return {
-        "model": "2D Gaussian summary",
+        "model": "2D Gaussian fit",
         "separation": separation,
-        "rayleigh_ratio": separation / max(g_spread + e_spread, np.finfo(float).eps),
+        "fwhm_g": fwhm_g,
+        "fwhm_e": fwhm_e,
+        "r2_g": r2_g,
+        "r2_e": r2_e,
+        "r_squared": min(r2_g, r2_e),
+        "r2_pass": r2_pass,
+        "rayleigh_pass": rayleigh_pass,
+        "gg_ee_pass": gg_ee_pass,
+        "passed": r2_pass and rayleigh_pass and gg_ee_pass,
         "g_center_i": float(g_center[0]),
         "g_center_q": float(g_center[1]),
         "e_center_i": float(e_center[0]),
         "e_center_q": float(e_center[1]),
         "threshold": threshold,
-        "assignment_fidelity": assignment_fidelity,
         "g_correct": g_correct,
         "e_correct": e_correct,
         "thermal": thermal,
@@ -644,9 +675,10 @@ def save_single_shot_plot(*, raw: RawResult, analysis: dict[str, object], title:
     i2_values = _scaled_axis(rotated_i)
     q2_values = _scaled_axis(rotated_q)
     _plot_single_shot_scatter(axes[0, 1], i2_values, q2_values, g_mask, e_mask, title="I2")
+    bins = raw.metadata.get("histogram_bins")
     projection_scale = _axis_scale(rotated_i)
-    _plot_single_shot_histogram(axes[1, 0], rotated_i, g_mask, e_mask, analysis=analysis, scale=1.0, bins=raw.metadata.get("histogram_bins"))
-    _plot_single_shot_histogram(axes[1, 1], rotated_i / projection_scale, g_mask, e_mask, analysis=analysis, scale=projection_scale, bins=raw.metadata.get("histogram_bins"))
+    _plot_single_shot_histogram(axes[1, 0], rotated_i, g_mask, e_mask, analysis=analysis, bins=bins, scale=1.0)
+    _plot_single_shot_histogram(axes[1, 1], rotated_i / projection_scale, g_mask, e_mask, analysis=analysis, bins=bins, scale=projection_scale)
     figure.savefig(path, dpi=150)
     plt.close(figure)
 
@@ -729,6 +761,41 @@ def _best_threshold(ground_projection: np.ndarray, excited_projection: np.ndarra
     return best_cut, best_fidelity
 
 
+def _fwhm(sigma: float) -> float:
+    """高斯半高全宽 FWHM = 2√(2·ln2)·σ ≈ 2.3548σ。"""
+    return float(2.0 * np.sqrt(2.0 * np.log(2.0)) * float(sigma))
+
+
+def _gaussian_pdf(x: np.ndarray, center: float, sigma: float) -> np.ndarray:
+    return np.exp(-0.5 * ((x - center) / sigma) ** 2) / (sigma * np.sqrt(2.0 * np.pi))
+
+
+def _single_shot_bin_count(bins: object) -> int:
+    return int(bins) if isinstance(bins, (int, float)) and int(bins) > 1 else 80
+
+
+def _projection_gaussian_r2(
+    projection: np.ndarray,
+    *,
+    center: float,
+    sigma: float,
+    bins: int,
+) -> float:
+    """在判别轴投影直方图上，用二维高斯的边际 N(center, σ²) 作模型计算 R²。"""
+    values = np.asarray(projection, dtype=float)
+    if values.size < 2 or float(np.ptp(values)) <= np.finfo(float).eps:
+        return 0.0
+    sigma = max(float(sigma), np.finfo(float).eps)
+    edges = np.linspace(float(np.min(values)), float(np.max(values)), bins)
+    counts, edges = np.histogram(values, bins=edges)
+    centers = 0.5 * (edges[:-1] + edges[1:])
+    width = float(np.diff(edges)[0])
+    fitted = values.size * width * _gaussian_pdf(centers, center, sigma)
+    ss_res = float(np.sum((counts - fitted) ** 2))
+    ss_tot = float(np.sum((counts - np.mean(counts)) ** 2))
+    return 1.0 - ss_res / ss_tot if ss_tot > 0.0 else 0.0
+
+
 def _plot_single_shot_scatter(axis, i_values: np.ndarray, q_values: np.ndarray, g_mask: np.ndarray, e_mask: np.ndarray, *, title: str) -> None:
     axis.scatter(i_values[g_mask], q_values[g_mask], s=4, alpha=0.65, label="g")
     axis.scatter(i_values[e_mask], q_values[e_mask], s=4, alpha=0.65, label="e")
@@ -747,32 +814,28 @@ def _plot_single_shot_histogram(
     e_mask: np.ndarray,
     *,
     analysis: dict[str, object],
-    scale: float,
     bins: object = None,
+    scale: float = 1.0,
 ) -> None:
-    bin_count = int(bins) if isinstance(bins, int | float) and int(bins) > 1 else 80
-    edges_for_histogram = np.linspace(float(np.min(i_values)), float(np.max(i_values)), bin_count)
-    g_counts, edges = np.histogram(i_values[g_mask], bins=edges_for_histogram)
-    e_counts, _ = np.histogram(i_values[e_mask], bins=edges_for_histogram)
+    bin_count = _single_shot_bin_count(bins)
+    edges = np.linspace(float(np.min(i_values)), float(np.max(i_values)), bin_count)
+    g_counts, edges = np.histogram(i_values[g_mask], bins=edges)
+    e_counts, _ = np.histogram(i_values[e_mask], bins=edges)
     centers = 0.5 * (edges[:-1] + edges[1:])
-    g_counts = _smooth_counts(g_counts)
-    e_counts = _smooth_counts(e_counts)
-    axis.plot(centers, g_counts, color="#6d63ff", linewidth=1.2)
-    axis.plot(centers, e_counts, color="#6d63ff", linewidth=1.2)
+    width = float(np.diff(edges)[0])
+    axis.bar(centers, g_counts, width=width, color="tab:blue", alpha=0.7, label="g")
+    axis.bar(centers, e_counts, width=width, color="tab:orange", alpha=0.7, label="e")
     threshold = float(analysis["threshold"]) / scale
-    axis.axvline(threshold, color="black", linewidth=1.0)
+    axis.axvline(threshold, color="black", linewidth=1.2, label="threshold")
     axis.set_xlabel("I")
     axis.set_ylabel("count")
     axis.grid(alpha=0.18)
+    axis.legend(loc="upper right")
     info = "\n".join(
         [
-            f"measuretime= {analysis.get('measuretime') or ''}",
-            f"amp= {analysis.get('readout_amp') or ''}",
             f"threshold= {threshold:.4g}",
-            f"thermal= {float(analysis['thermal']):.4f}",
             f"gg= {float(analysis['g_correct']):.5f}",
             f"ee= {float(analysis['e_correct']):.5f}",
-            f"Waiting= {analysis.get('waiting') or ''}",
         ]
     )
     axis.text(0.55, 0.92, info, transform=axis.transAxes, va="top", fontsize=9)
@@ -800,11 +863,3 @@ def _set_padded_limits(axis, x_values: np.ndarray, y_values: np.ndarray) -> None
     y_span = max(float(np.ptp(y_values)), 1.0)
     axis.set_xlim(float(np.min(x_values) - 0.08 * x_span), float(np.max(x_values) + 0.08 * x_span))
     axis.set_ylim(float(np.min(y_values) - 0.08 * y_span), float(np.max(y_values) + 0.08 * y_span))
-
-
-def _smooth_counts(counts: np.ndarray) -> np.ndarray:
-    if counts.size < 5:
-        return counts.astype(float)
-    kernel = np.array([1.0, 2.0, 3.0, 2.0, 1.0], dtype=float)
-    kernel /= np.sum(kernel)
-    return np.convolve(counts.astype(float), kernel, mode="same")

@@ -76,10 +76,20 @@ STEP6_ECHO_OUTCOME_TEMPLATE = (
     "候选标定：{candidate_ids}。详细报告：{report_path}"
 )
 STEP7_OUTCOME_TEMPLATE = (
-    "SingleShotHistogram 已完成：RayleighRatio 候选值为 {result_value:.6g}，"
-    "判态保真度={assignment_fidelity:.4f}，状态为 pending_agent_review。"
+    "SingleShotHistogram 已完成：判态阈值候选值为 {result_value:.6g} a.u.，"
+    "判据：R²_g={r2_g:.3f}/R²_e={r2_e:.3f}（>0.9），"
+    "瑞利 d={separation:.4g} vs FWHM_g+FWHM_e={fwhm_sum:.4g}，"
+    "gg={gg:.4f}/ee={ee:.4f}（>0.9），判定：{verdict}。状态为 pending_agent_review。"
     "候选标定：{candidate_ids}。详细报告：{report_path}"
 )
+
+
+def _pass_text(passed: object) -> str:
+    return "通过" if passed is True else "不通过"
+
+
+def _verdict_text(passed: object) -> str:
+    return "合格" if passed is True else "不合格"
 
 # 查询工具的步骤视图：顺序即校准推进顺序；Step6 覆盖 Ramsey 与 Echo 两个 key。
 _CALIBRATION_STEPS: list[tuple[int, str, tuple[str, ...]]] = [
@@ -90,7 +100,7 @@ _CALIBRATION_STEPS: list[tuple[int, str, tuple[str, ...]]] = [
     (5, "T1", ("qubit.t1",)),
     (6, "T2* (Ramsey)", ("qubit.t2",)),
     (6, "T2 Echo", ("qubit.t2_echo",)),
-    (7, "单次测量判态", ("readout.single_shot.rayleigh_ratio",)),
+    (7, "单次测量判态", ("readout.single_shot.threshold",)),
 ]
 
 _STEP_KEYS_BY_NO: dict[int, tuple[str, ...]] = {
@@ -533,8 +543,8 @@ class CalibrationEnv:
                 "coeff": plan.coeff,
             },
             context=context,
-            calibration_key="readout.single_shot.rayleigh_ratio",
-            result_name="RayleighRatio",
+            calibration_key="readout.single_shot.threshold",
+            result_name="Threshold",
             template_name="step7.md",
             outcome_template=STEP7_OUTCOME_TEMPLATE,
         )
@@ -842,9 +852,13 @@ class CalibrationEnv:
                 "T2_echo": t2_primary if t2_primary is not None else analysis["result_value"],
                 "detuning_hz": fit.get("detuning_hz", ""),
                 "single_shot_threshold": fit.get("threshold", ""),
-                "fidelity": fit.get("assignment_fidelity", ""),
                 "g_center": f"({fit.get('g_center_i', '')}, {fit.get('g_center_q', '')})",
                 "e_center": f"({fit.get('e_center_i', '')}, {fit.get('e_center_q', '')})",
+                "fwhm_sum": float(fit.get("fwhm_g", 0.0)) + float(fit.get("fwhm_e", 0.0)),
+                "r2_pass": _pass_text(fit.get("r2_pass")),
+                "rayleigh_pass": _pass_text(fit.get("rayleigh_pass")),
+                "gg_ee_pass": _pass_text(fit.get("gg_ee_pass")),
+                "verdict": _verdict_text(fit.get("passed")),
                 "candidate_id": candidate["candidate_id"],
                 "candidate_ids": candidate_ids,
                 "candidate_status": candidate["status"],
@@ -873,7 +887,13 @@ class CalibrationEnv:
                     center_ghz=float(fit.get("center_hz", analysis["result_value"])) / 1.0e9,
                     r_squared=float(fit.get("r_squared", 0.0)),
                     result_value=float(analysis["result_value"]),
-                    assignment_fidelity=float(fit.get("assignment_fidelity", 0.0)),
+                    r2_g=float(fit.get("r2_g", 0.0)),
+                    r2_e=float(fit.get("r2_e", 0.0)),
+                    separation=float(fit.get("separation", 0.0)),
+                    fwhm_sum=float(fit.get("fwhm_g", 0.0)) + float(fit.get("fwhm_e", 0.0)),
+                    gg=float(fit.get("g_correct", 0.0)),
+                    ee=float(fit.get("e_correct", 0.0)),
+                    verdict=_verdict_text(fit.get("passed")),
                     candidate_ids=candidate_ids,
                     report_path=report_path,
                 )
@@ -1333,7 +1353,7 @@ def _analyze_and_plot(raw: RawResult, *, step: str, experiment: str, path: Path)
     if raw.experiment_type == ExperimentType.SINGLE_SHOT_HISTOGRAM:
         fit = analyze_single_shot(raw)
         save_single_shot_plot(raw=raw, analysis=fit, title=f"{step}: I vs Q", path=path)
-        return {"fit": fit, "result_value": float(fit["rayleigh_ratio"]), "unit": "ratio"}
+        return {"fit": fit, "result_value": float(fit["threshold"]), "unit": "a.u."}
     raise TypeError(f"Unsupported experiment type: {raw.experiment_type}")
 
 

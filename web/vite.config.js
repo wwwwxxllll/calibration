@@ -15,7 +15,8 @@ export default defineConfig({
       '/tools': BACKEND,
       '/actions': BACKEND,
       '/calibrations': BACKEND,
-      '/files': BACKEND
+      '/files': BACKEND,
+      '/events': BACKEND
     }
   }
 });

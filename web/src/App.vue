@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { api } from './api/client';
+import { subscribeEvents } from './api/events';
 import StepTimeline from './components/StepTimeline.vue';
 import ActionList from './components/ActionList.vue';
 import ActionDetail from './components/ActionDetail.vue';
@@ -19,8 +20,8 @@ const connected = ref(false);
 const error = ref('');
 const lastUpdated = ref('--:--:--');
 
-let agentsTimer = null;
 let eventsTimer = null;
+let eventSource = null;
 
 const statusText = computed(() => {
   if (!connected.value) return error.value ? '连接失败' : '未连接';
@@ -87,6 +88,22 @@ async function loadAgents() {
   lastUpdated.value = nowClock();
 }
 
+async function refreshActive() {
+  if (!activeId.value) return;
+  try {
+    activeAction.value = await api.getAction(activeId.value);
+  } catch {
+    activeAction.value = null;
+  }
+}
+
+// SSE 变更信号到达后：重拉主数据，并刷新当前选中 Action 的详情。
+async function onEventsChanged() {
+  await loadBase();
+  await loadAgents();
+  await refreshActive();
+}
+
 async function select(id) {
   activeId.value = id;
   actionEvents.value = [];
@@ -123,12 +140,18 @@ function startEventsPolling(id) {
 onMounted(() => {
   loadBase();
   loadAgents();
-  agentsTimer = setInterval(loadAgents, 1500);
+  eventSource = subscribeEvents({
+    onOpen: onEventsChanged,
+    onMessage: onEventsChanged,
+    onError: () => {
+      connected.value = false;
+    }
+  });
 });
 
 onBeforeUnmount(() => {
-  clearInterval(agentsTimer);
   clearInterval(eventsTimer);
+  if (eventSource) eventSource.close();
 });
 </script>
 
@@ -149,7 +172,7 @@ onBeforeUnmount(() => {
       </span>
 
       <span class="auto-pill">
-        <span class="spin"></span>自动刷新 · 最后更新 {{ lastUpdated }}
+        <span class="spin"></span>实时推送 · 最后更新 {{ lastUpdated }}
       </span>
 
       <AgentPanel :hub-connected="hubConnected" :agents="agents" />
