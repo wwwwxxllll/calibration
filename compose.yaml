@@ -18,7 +18,7 @@ services:
     expose:
       - "8765"
     volumes:
-      - ./deploy-data:/app/app/data
+      - ./app/data:/app/app/data
     healthcheck:
       test: ["CMD", ".venv/bin/python", "-c", "import socket; s=socket.create_connection(('127.0.0.1',8765),2); s.close()"]
       interval: 10s
@@ -40,7 +40,7 @@ services:
     expose:
       - "8000"
     volumes:
-      - ./deploy-data:/app/app/data
+      - ./app/data:/app/app/data
     depends_on:
       star-hub:
         condition: service_healthy

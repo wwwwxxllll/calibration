@@ -2,12 +2,19 @@ FROM python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    UV_LINK_MODE=copy
+    UV_LINK_MODE=copy \
+    UV_DEFAULT_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple
+
+RUN sed -i \
+    -e 's|http://deb.debian.org/debian|https://mirrors.aliyun.com/debian|g' \
+    -e 's|https://deb.debian.org/debian|https://mirrors.aliyun.com/debian|g' \
+    /etc/apt/sources.list.d/debian.sources
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends git ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
-    && pip install --no-cache-dir uv
+    && pip install --no-cache-dir \
+      -i https://pypi.tuna.tsinghua.edu.cn/simple/ uv
 
 WORKDIR /app/agent
 
@@ -20,4 +27,3 @@ RUN uv venv --python 3.13 .venv \
 COPY agent/calibration_agent.py agent/configs.example.toml ./
 
 ENTRYPOINT [".venv/bin/python", "calibration_agent.py"]
-
