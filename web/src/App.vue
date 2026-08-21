@@ -6,14 +6,10 @@ import ActionList from './components/ActionList.vue';
 import ActionDetail from './components/ActionDetail.vue';
 import EventTimeline from './components/EventTimeline.vue';
 import AgentPanel from './components/AgentPanel.vue';
-import ToolPanel from './components/ToolPanel.vue';
-import ConfirmedCalibrations from './components/ConfirmedCalibrations.vue';
-import CandidateCalibrations from './components/CandidateCalibrations.vue';
 
 const state = ref(null);
 const agents = ref([]);
 const hubConnected = ref(false);
-const tools = ref([]);
 const actions = ref([]);
 const calibrations = ref({ candidates: [], active: {} });
 const activeId = ref(null);
@@ -58,14 +54,12 @@ function nowClock() {
 
 async function loadBase() {
   try {
-    const [s, t, a, c] = await Promise.all([
+    const [s, a, c] = await Promise.all([
       api.getState(),
-      api.getTools(),
       api.getActions(),
       api.getCalibrations()
     ]);
     state.value = s;
-    tools.value = t.tools ?? [];
     actions.value = a.actions ?? [];
     calibrations.value = c;
     connected.value = true;
@@ -166,16 +160,14 @@ onBeforeUnmount(() => {
 
       <div class="grid">
         <aside class="col col-left">
-          <div class="card list-card">
-            <h2 class="sec-title mb">Action 历史</h2>
-            <ActionList
-              :current-actions="currentActions"
-              :history-groups="historyGroups"
-              :current-calibration-id="currentCalibrationId"
-              :active-id="activeId"
-              @select="select"
-            />
-          </div>
+          <ActionList
+            :current-actions="currentActions"
+            :history-groups="historyGroups"
+            :current-calibration-id="currentCalibrationId"
+            :active-id="activeId"
+            :active="calibrations.active"
+            @select="select"
+          />
         </aside>
 
         <div class="col col-main">
@@ -185,12 +177,6 @@ onBeforeUnmount(() => {
         <aside class="col col-right">
           <EventTimeline :events="actionEvents" />
         </aside>
-      </div>
-
-      <div class="bottom-row">
-        <ToolPanel :tools="tools" />
-        <ConfirmedCalibrations :active="calibrations.active" />
-        <CandidateCalibrations :candidates="calibrations.candidates" />
       </div>
     </main>
   </div>
@@ -349,7 +335,7 @@ main {
 }
 .grid {
   display: grid;
-  grid-template-columns: 240px minmax(0, 1fr) 320px;
+  grid-template-columns: 280px minmax(0, 1fr) 280px;
   gap: 24px;
   align-items: start;
 }
@@ -518,14 +504,6 @@ main {
   padding: 4px 18px 16px;
 }
 
-/* ── 底部三栏（工具 / 已确认标定 / 候选值）── */
-.bottom-row {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 24px;
-  align-items: stretch;
-}
-
 @media (max-width: 1100px) {
   .grid {
     grid-template-columns: 1fr;
@@ -534,9 +512,6 @@ main {
   .col-left,
   .col-right {
     position: static;
-  }
-  .bottom-row {
-    grid-template-columns: 1fr;
   }
 }
 </style>

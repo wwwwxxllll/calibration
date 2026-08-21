@@ -8,14 +8,14 @@ const props = defineProps({
 
 // 校准流程固定步骤（与后端 qcal-env 的 Step1~Step7 对齐，Step6 拆为 Ramsey/Echo 两段）。
 const STEPS = [
-  { key: 'Step1', label: '读取频扫', desc: 'readout.frequency.g' },
-  { key: 'Step2', label: 'Qubit 频扫', desc: 'qubit.frequency' },
-  { key: 'Step3', label: 'π 脉冲幅度', desc: 'qubit.pi_pulse.amplitude' },
-  { key: 'Step4', label: '激发态读取', desc: 'readout.frequency.e' },
-  { key: 'Step5', label: 'T1 测量', desc: 'qubit.t1' },
-  { key: 'Step6.1', label: 'Ramsey T2*', desc: 'qubit.t2' },
-  { key: 'Step6.2', label: 'Echo T2', desc: 'qubit.t2_echo' },
-  { key: 'Step7', label: '读取保真度', desc: 'readout.single_shot.rayleigh_ratio' }
+  { key: 'Step1', label: '读取频扫' },
+  { key: 'Step2', label: 'Qubit 频扫' },
+  { key: 'Step3', label: 'π 脉冲幅度' },
+  { key: 'Step4', label: '激发态读取' },
+  { key: 'Step5', label: 'T1 测量' },
+  { key: 'Step6.1', label: 'Ramsey T2*' },
+  { key: 'Step6.2', label: 'Echo T2' },
+  { key: 'Step7', label: '读取保真度' }
 ];
 
 const stepNodes = computed(() =>
@@ -50,7 +50,6 @@ const statusText = { done: '✓ 完成', running: '进行中', failed: '失败',
       <div v-for="s in stepNodes" :key="s.key" class="step-node" :class="s.status">
         <div class="step-circle">{{ s.index }}</div>
         <div class="step-label">{{ s.label }}</div>
-        <div class="step-desc">{{ s.desc }}</div>
         <div class="step-status">{{ statusText[s.status] }}</div>
       </div>
     </div>
@@ -168,15 +167,6 @@ const statusText = { done: '✓ 完成', running: '进行中', failed: '失败',
 }
 .step-node.running .step-label {
   color: var(--accent);
-}
-.step-desc {
-  margin-top: 2px;
-  font-size: 11px;
-  color: var(--ink-3);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
 }
 .step-status {
   margin-top: 5px;

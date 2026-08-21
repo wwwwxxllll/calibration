@@ -1,27 +1,22 @@
 <script setup>
 import { computed } from 'vue';
-import { formatHz, formatValue } from '../utils/format';
+import { formatValue, formatCalibration } from '../utils/format';
 
 const props = defineProps({
   action: { type: Object, default: null }
 });
 
-const fit = computed(() => props.action?.fit ?? {});
-const result = computed(() => props.action?.result ?? {});
 const candidate = computed(() => props.action?.candidate ?? null);
+const fit = computed(() => props.action?.fit ?? {});
 const artifacts = computed(() => props.action?.artifacts ?? {});
-const outcome = computed(() => props.action?.outcome ?? {});
 const raw = computed(() => props.action?.raw ?? {});
 const inputs = computed(() => props.action?.inputs ?? {});
 
-const fitItems = computed(() => [
-  { label: '拟合模型', value: fit.value.model ?? '-' },
-  { label: '中心频率', value: formatHz(fit.value.center_hz) },
-  { label: '半高宽', value: formatHz(fit.value.half_width_hz) },
-  { label: 'R²', value: fit.value.r_squared != null ? Number(fit.value.r_squared).toFixed(4) : '-' }
-]);
-
 const paramRows = computed(() => Object.entries(inputs.value));
+
+const rSquared = computed(() =>
+  fit.value.r_squared != null ? Number(fit.value.r_squared).toFixed(4) : '-'
+);
 
 const plotUrl = computed(() => (artifacts.value.plot ? artifacts.value.plot : null));
 const reportUrl = computed(() => (artifacts.value.report ? artifacts.value.report : null));
@@ -32,45 +27,22 @@ const dataUrl = computed(() => (artifacts.value.data ? artifacts.value.data : nu
   <div v-if="!action" class="card empty-card">请选择一个 Action 查看详情</div>
 
   <template v-else>
-    <!-- 拟合结果 + 候选校准值（同一列） | 实验参数 -->
-    <div class="two-col right-box">
+    <!-- 候选校准值 + R² -->
+    <div class="two-col">
       <div class="card">
-        <h3 class="sec-title mb">拟合结果</h3>
-        <div class="kv">
-          <div v-for="item in fitItems" :key="item.label" class="kv-row">
-            <span class="kv-label">{{ item.label }}</span>
-            <span class="kv-value">{{ item.value }}</span>
-          </div>
-        </div>
-        <div v-if="result.parameter" class="result-line">
-          {{ result.parameter }} = {{ formatHz(result.value) }} {{ result.unit }}
-        </div>
-
-        <hr class="section-divider" />
-        <h4 class="sub-sec-title">候选校准值</h4>
-        <div v-if="candidate" class="kv">
-          <div class="kv-row">
-            <span class="kv-label">{{ candidate.key }}</span>
-            <span class="kv-value">{{ formatHz(candidate.value) }} {{ candidate.unit }}</span>
-          </div>
-        </div>
+        <h3 class="sec-title mb">候选校准值</h3>
+        <div v-if="candidate" class="big-value">{{ formatCalibration(candidate.value, candidate.unit) }}</div>
         <div v-else class="empty">暂无候选值</div>
       </div>
 
       <div class="card">
-        <h3 class="sec-title mb">实验参数</h3>
-        <div v-if="paramRows.length" class="kv">
-          <div v-for="[name, value] in paramRows" :key="name" class="kv-row">
-            <span class="kv-label mono">{{ name }}</span>
-            <span class="kv-value mono">{{ formatValue(value) }}</span>
-          </div>
-        </div>
-        <div v-else class="empty">暂无参数</div>
+        <h3 class="sec-title mb">R²</h3>
+        <div class="big-value">{{ rSquared }}</div>
       </div>
     </div>
 
-    <!-- 产物 -->
-    <div class="card right-box">
+    <!-- 图片 -->
+    <div class="card">
       <h3 class="sec-title mb">图片</h3>
       <div class="artifacts">
         <a v-if="dataUrl" :href="dataUrl" download class="link">⬇ data.csv</a>
@@ -83,11 +55,18 @@ const dataUrl = computed(() => (artifacts.value.data ? artifacts.value.data : nu
       </div>
     </div>
 
-    <!-- Outcome -->
-    <div v-if="outcome.content || outcome.isError" class="card right-box">
-      <h3 class="sec-title mb">结果解读</h3>
-      <div class="outcome" :class="{ error: outcome.isError }">{{ outcome.content }}</div>
+    <!-- 实验参数 -->
+    <div class="card">
+      <h3 class="sec-title mb">实验参数</h3>
+      <div v-if="paramRows.length" class="param-grid">
+        <div v-for="[name, value] in paramRows" :key="name" class="param-box">
+          <span class="param-name mono">{{ name }}</span>
+          <span class="param-value mono">{{ formatValue(value) }}</span>
+        </div>
+      </div>
+      <div v-else class="empty">暂无参数</div>
     </div>
+
   </template>
 </template>
 
@@ -100,61 +79,42 @@ const dataUrl = computed(() => (artifacts.value.data ? artifacts.value.data : nu
   grid-template-columns: 1fr 1fr;
   gap: 24px;
 }
-.right-box {
-  max-width: 720px;
-  margin-left: auto;
-}
 @media (max-width: 900px) {
   .two-col {
     grid-template-columns: 1fr;
   }
 }
-.kv {
-  display: grid;
-}
-.kv-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 16px;
-  padding: 9px 0;
-  border-bottom: 1px dashed var(--line);
-}
-.kv-row:last-child {
-  border-bottom: none;
-}
-.kv-label {
-  color: var(--ink-2);
-  font-size: 13px;
-  flex-shrink: 0;
-}
-.kv-value {
-  font-size: 13px;
-  font-weight: 500;
-  text-align: right;
+.big-value {
+  font-size: 18px;
+  font-weight: 700;
   word-break: break-all;
 }
 .mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
-.result-line {
-  margin-top: 12px;
+.param-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+.param-box {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fafbfe;
+}
+.param-name {
+  font-size: 11px;
+  color: var(--ink-3);
+  word-break: break-all;
+}
+.param-value {
   font-size: 13px;
   font-weight: 600;
-  color: var(--accent);
-}
-.section-divider {
-  border: none;
-  border-top: 1px dashed var(--line-2);
-  margin: 16px 0 2px;
-}
-.sub-sec-title {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--ink-3);
-  margin: 0 0 4px;
+  word-break: break-all;
 }
 .artifacts {
   display: flex;
@@ -189,20 +149,5 @@ const dataUrl = computed(() => (artifacts.value.data ? artifacts.value.data : nu
   margin-top: 12px;
   color: var(--ink-3);
   font-size: 12px;
-}
-.outcome {
-  font-size: 13px;
-  color: var(--ink-2);
-  line-height: 1.7;
-  background: #f8f9fd;
-  border: 1px solid var(--line);
-  border-left: 3px solid var(--ok);
-  border-radius: 10px;
-  padding: 12px 14px;
-}
-.outcome.error {
-  background: #fdf6f7;
-  border-left-color: var(--err);
-  color: #be123c;
 }
 </style>

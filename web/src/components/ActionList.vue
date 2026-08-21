@@ -1,33 +1,72 @@
 <script setup>
 import { computed } from 'vue';
-import { statusDotClass, statusLabel, formatTime } from '../utils/format';
+import { statusDotClass, statusLabel, formatTime, formatCalibration } from '../utils/format';
 import { usePagination } from '../utils/usePagination';
+import { STEP_PARAM_KEY } from '../utils/steps';
 import Pager from './Pager.vue';
 
 const props = defineProps({
   currentActions: { type: Array, default: () => [] },
   historyGroups: { type: Array, default: () => [] },
   currentCalibrationId: { type: String, default: null },
-  activeId: { type: String, default: null }
+  activeId: { type: String, default: null },
+  active: { type: Object, default: () => ({}) }
 });
 
 const emit = defineEmits(['select']);
 
-const currentList = computed(() => props.currentActions);
+// 只展示有数据结果的校准实验（白名单，按 experiment 字段大小写不敏感匹配）。
+const VISIBLE_EXPERIMENTS = new Set([
+  'sweepreadout',        // 读取频扫
+  'sweepqubit',          // Qubit 频扫
+  'powerrabi',           // π 脉冲幅度
+  'sweepreadoute',       // 激发态读取
+  'qubitt1',             // T1 测量
+  'ramey',               // Ramsey
+  'echo',                // Echo T2
+  'singleshothistogram'  // 单发直方图（读取保真度）
+]);
+const isVisible = (a) => VISIBLE_EXPERIMENTS.has(String(a.experiment ?? '').trim().toLowerCase());
+
+const currentList = computed(() => (props.currentActions ?? []).filter(isVisible));
 const {
   page: currentPage,
   total: currentTotal,
   paged: currentPaged,
   go: currentGo
-} = usePagination(currentList, 10);
+} = usePagination(currentList, 5);
 
-const historyList = computed(() => props.historyGroups);
+const historyList = computed(() =>
+  (props.historyGroups ?? [])
+    .map((g) => ({ ...g, actions: (g.actions ?? []).filter(isVisible) }))
+    .filter((g) => g.actions.length > 0)
+);
 const {
   page: historyPage,
   total: historyTotal,
   paged: historyPaged,
   go: historyGo
 } = usePagination(historyList, 10);
+
+// 已确认标定值（按参数键）。
+const activeMap = computed(() => props.active ?? {});
+
+// 每个 action 对应步骤的已确认标定值 + 该 action 自带的候选校准值。
+const calInfo = (action) => {
+  const rows = [];
+  const paramKey = STEP_PARAM_KEY[action.step];
+  if (paramKey) {
+    const confirmed = activeMap.value[paramKey];
+    if (confirmed && confirmed.value != null) {
+      rows.push({ label: '已确认标定值', type: 'confirmed', value: confirmed.value, unit: confirmed.unit });
+    }
+  }
+  const cand = action.candidate;
+  if (cand && cand.value != null) {
+    rows.push({ label: '候选校准值', type: 'candidate', value: cand.value, unit: cand.unit });
+  }
+  return rows;
+};
 </script>
 
 <template>
@@ -40,7 +79,7 @@ const {
         <span class="chev">▶</span>
       </summary>
       <div class="current-body">
-        <div v-if="!currentActions.length" class="empty">暂无 Action 记录</div>
+        <div v-if="!currentList.length" class="empty">暂无 Action 记录</div>
         <button
           v-for="action in currentPaged"
           :key="action.action_id"
@@ -56,6 +95,9 @@ const {
             </span>
           </div>
           <div class="action-meta">{{ action.step }} · {{ formatTime(action.timestamp) }}</div>
+          <div v-for="(cal, ci) in calInfo(action)" :key="ci" class="action-cal" :class="cal.type">
+            {{ cal.label }}：{{ formatCalibration(cal.value, cal.unit) }}
+          </div>
         </button>
         <Pager :page="currentPage" :total="currentTotal" @change="currentGo" />
       </div>
@@ -88,6 +130,9 @@ const {
               </span>
             </div>
             <div class="action-meta">{{ action.step }} · {{ formatTime(action.timestamp) }}</div>
+            <div v-for="(cal, ci) in calInfo(action)" :key="ci" class="action-cal" :class="cal.type">
+              {{ cal.label }}：{{ formatCalibration(cal.value, cal.unit) }}
+            </div>
           </button>
         </div>
       </details>
@@ -179,6 +224,17 @@ const {
 .action-meta {
   color: var(--ink-3);
   font-size: 11.5px;
+}
+.action-cal {
+  font-size: 11.5px;
+  font-weight: 500;
+  word-break: break-all;
+}
+.action-cal.confirmed {
+  color: var(--ok);
+}
+.action-cal.candidate {
+  color: var(--warn);
 }
 
 /* 当前校准：完整框（标题 + 内容都在框内） */
