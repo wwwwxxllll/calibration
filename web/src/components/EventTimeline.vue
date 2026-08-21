@@ -1,13 +1,10 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { computed } from 'vue';
 import { formatClock } from '../utils/format';
 
 const props = defineProps({
   events: { type: Array, default: () => [] }
 });
-
-const LIMIT = 5;
-const collapsed = ref(true);
 
 const stageLabel = (stage) =>
   ({
@@ -23,8 +20,6 @@ const stageLabel = (stage) =>
   }[stage] ?? stage);
 
 const sorted = computed(() => [...props.events].sort((a, b) => String(a.timestamp).localeCompare(String(b.timestamp))));
-const visible = computed(() => (collapsed.value ? sorted.value.slice(0, LIMIT) : sorted.value));
-const hiddenCount = computed(() => sorted.value.length - visible.value.length);
 
 const dotClass = (stage) => {
   if (stage === 'succeeded' || stage === 'completed') return 'ok';
@@ -42,7 +37,7 @@ const dotClass = (stage) => {
     </div>
 
     <div v-if="sorted.length" class="timeline">
-      <div v-for="(event, index) in visible" :key="index" class="tl-item">
+      <div v-for="(event, index) in sorted" :key="index" class="tl-item">
         <i class="tl-dot" :class="dotClass(event.stage)"></i>
         <div class="tl-body">
           <div class="tl-head">
@@ -54,10 +49,6 @@ const dotClass = (stage) => {
       </div>
     </div>
     <div v-else class="empty">暂无事件</div>
-
-    <button v-if="hiddenCount > 0" class="toggle" type="button" @click="collapsed = !collapsed">
-      {{ collapsed ? `展开全部 ${hiddenCount} 项` : '收起' }}
-    </button>
   </section>
 </template>
 
@@ -133,24 +124,6 @@ const dotClass = (stage) => {
   font-size: 12px;
   line-height: 1.5;
   word-break: break-word;
-}
-.toggle {
-  margin-top: 14px;
-  width: 100%;
-  padding: 7px 12px;
-  border: 1px solid var(--line-2);
-  border-radius: 8px;
-  background: #fff;
-  color: var(--ink-2);
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 500;
-  font: inherit;
-  transition: all 0.15s;
-}
-.toggle:hover {
-  border-color: var(--accent);
-  color: var(--accent);
 }
 @keyframes pulse {
   0%,

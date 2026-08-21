@@ -166,8 +166,8 @@ onBeforeUnmount(() => {
 
       <div class="grid">
         <aside class="col col-left">
-          <h2 class="col-title">Action 历史</h2>
           <div class="card list-card">
+            <h2 class="sec-title mb">Action 历史</h2>
             <ActionList
               :current-actions="currentActions"
               :history-groups="historyGroups"
@@ -349,7 +349,7 @@ main {
 }
 .grid {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr) 320px;
+  grid-template-columns: 240px minmax(0, 1fr) 320px;
   gap: 24px;
   align-items: start;
 }
@@ -363,15 +363,6 @@ main {
   position: sticky;
   top: 78px;
 }
-.col-title {
-  margin: 4px 0 0;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--ink-3);
-}
-
 /* ── 卡片 ── */
 .card {
   background: var(--card);
@@ -532,7 +523,7 @@ main {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 24px;
-  align-items: start;
+  align-items: stretch;
 }
 
 @media (max-width: 1100px) {

@@ -1,7 +1,14 @@
 <script setup>
-defineProps({
+import { computed } from 'vue';
+import { usePagination } from '../utils/usePagination';
+import Pager from './Pager.vue';
+
+const props = defineProps({
   tools: { type: Array, default: () => [] }
 });
+
+const list = computed(() => props.tools);
+const { page, total, paged, go } = usePagination(list);
 </script>
 
 <template>
@@ -12,13 +19,14 @@ defineProps({
       <span class="chev">▶</span>
     </summary>
     <div class="panel-body">
-      <div v-if="tools.length" class="tool-list">
-        <div v-for="tool in tools" :key="tool.name" class="tool-item">
+      <div v-if="paged.length" class="tool-list">
+        <div v-for="tool in paged" :key="tool.name" class="tool-item">
           <div class="tool-name">{{ tool.name }}</div>
           <div class="tool-desc">{{ tool.description }}</div>
         </div>
       </div>
       <div v-else class="empty">暂无工具</div>
+      <Pager :page="page" :total="total" @change="go" />
     </div>
   </details>
 </template>

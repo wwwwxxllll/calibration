@@ -33,7 +33,7 @@ const dataUrl = computed(() => (artifacts.value.data ? artifacts.value.data : nu
 
   <template v-else>
     <!-- 拟合结果 + 候选校准值（同一列） | 实验参数 -->
-    <div class="two-col">
+    <div class="two-col right-box">
       <div class="card">
         <h3 class="sec-title mb">拟合结果</h3>
         <div class="kv">
@@ -70,8 +70,8 @@ const dataUrl = computed(() => (artifacts.value.data ? artifacts.value.data : nu
     </div>
 
     <!-- 产物 -->
-    <div class="card">
-      <h3 class="sec-title mb">产物</h3>
+    <div class="card right-box">
+      <h3 class="sec-title mb">图片</h3>
       <div class="artifacts">
         <a v-if="dataUrl" :href="dataUrl" download class="link">⬇ data.csv</a>
         <a v-if="reportUrl" :href="reportUrl" download class="link">⬇ report.md</a>
@@ -84,8 +84,8 @@ const dataUrl = computed(() => (artifacts.value.data ? artifacts.value.data : nu
     </div>
 
     <!-- Outcome -->
-    <div v-if="outcome.content || outcome.isError" class="card">
-      <h3 class="sec-title mb">Outcome</h3>
+    <div v-if="outcome.content || outcome.isError" class="card right-box">
+      <h3 class="sec-title mb">结果解读</h3>
       <div class="outcome" :class="{ error: outcome.isError }">{{ outcome.content }}</div>
     </div>
   </template>
@@ -99,6 +99,10 @@ const dataUrl = computed(() => (artifacts.value.data ? artifacts.value.data : nu
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 24px;
+}
+.right-box {
+  max-width: 720px;
+  margin-left: auto;
 }
 @media (max-width: 900px) {
   .two-col {
